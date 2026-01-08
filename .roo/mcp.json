@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "mcp-deepwiki": {
+      "command": "npx",
+      "args": ["-y", "mcp-deepwiki@latest"],
+      "disabled": true,
+      "alwaysAllow": []
+    },
+    "textual-docs": {
+      "type": "streamable-http",
+      "url": "https://gitmcp.io/textualize/textual",
+      "disabled": true,
+      "alwaysAllow": [],
+      "disabledTools": ["fetch_generic_url_content"]
+    }
+  }
+}
