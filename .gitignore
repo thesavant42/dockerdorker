@@ -3,7 +3,7 @@
 **/*.db
 **/*.tar.gz
 **/*.tgz
-app/data/*
+/app/data/
 
 # py
 **/*.pyc
@@ -12,7 +12,7 @@ app/data/*
 # emv
 .env
 **/*.env
-**/token_pull.txt
+token_pull.txt
 
 # ide
 .cursorignore
@@ -22,4 +22,4 @@ app/data/*
 .rooignore
 
 #docs 
-docs/texual-docs/
+/docs/texual-docs/
