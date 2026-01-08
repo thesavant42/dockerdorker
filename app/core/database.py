@@ -12,8 +12,8 @@ from typing import Dict, List, Optional, Any, Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from app.core.utils.layer_fetcher import LayerPeekResult
 
-# Database file location (in project root/data directory)
-DB_FILE = Path(__file__).parent.parent.parent / "data" / "docker-dorker.db"
+# Database file location (in app/data directory)
+DB_FILE = Path(__file__).parent.parent / "data" / "docker-dorker.db"
 
 # Cache expiration time (24 hours)
 CACHE_EXPIRATION_HOURS = 24

@@ -31,7 +31,7 @@ class RightPanel(Static):
 class DockerDorkerApp(App):
     """dockerDorker - A Textual app with a basic UI layout."""
 
-    CSS_PATH = "styles.tcss"
+    CSS_PATH = "app/styles/styles.tcss"
     TITLE = "dockerDorker"
     SUB_TITLE = "by @thesavant42"
 

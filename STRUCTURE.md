@@ -5,13 +5,18 @@ This document describes the permanent directory structure for the dockerDorker p
 ## Overview
 
 ```
-textular-experiments/
+dockerdorker/
 ├── app.py                              # Main entry point - Textual TUI application
-├── styles.tcss                         # UI stylesheet
 ├── STRUCTURE.md                        # This file
-├── TODO.md                             # Legacy notes
 ├── app/                                # Main application package
 │   ├── __init__.py                     # Package init (version info)
+│   ├── data/                           # Runtime data directory (contents gitignored)
+│   │   ├── .gitkeep                    # Keeps directory in git
+│   │   ├── docker-dorker.db            # SQLite database (auto-created)
+│   │   ├── cache/                      # Layer cache (future)
+│   │   └── output/                     # Carved files output (future)
+│   ├── styles/                         # UI styling
+│   │   └── styles.tcss                 # Textual CSS stylesheet
 │   ├── core/                           # Shared utilities and APIs
 │   │   ├── __init__.py                 # Re-exports Database, api, utils
 │   │   ├── database.py                 # SQLite caching for search/layers
@@ -31,30 +36,23 @@ textular-experiments/
 │   │       ├── image_config_formatter.py # Image config parsing
 │   │       └── image_formatters.py     # Size/digest formatting
 │   └── modules/                        # Feature modules
-│       ├── __init__.py                 # (to be added)
+│       ├── __init__.py                 # 
 │       ├── search/                     # Docker Hub search module
-│       │   ├── README-search.md        # Module documentation
 │       │   └── search-docker-hub.py    # Standalone search script
 │       ├── enumerate/                  # Container file enumeration
-│       │   ├── README-enumerate.md     # Module documentation
 │       │   ├── list_dockerhub_container_files.py
 │       │   └── tag-and-enum.py         # Tag enumeration (standalone)
 │       └── carve/                      # File extraction module
-│           ├── README-carve-file.md    # Module documentation
-│           ├── carve-file-from-layer.py # Standalone carve script
-│           └── src/                    # (Legacy - to be removed after verification)
-├── data/                               # Runtime data directory
-│   ├── .gitkeep                        # Keeps directory in git
-│   ├── docker-dorker.db                # SQLite database (auto-created)
-│   ├── cache/                          # Layer cache (future)
-│   └── output/                         # Carved files output (future)
+│           └── carve-file-from-layer.py # Standalone carve script
 ├── plans/                              # Project planning documents
 │   ├── in-progress/                    # Current work
-│   │   └── refactor-to-submodules-plan.md
 │   ├── completed/                      # Done plans
 │   └── to-do/                          # Future plans
 └── docs/                               # Documentation
-    └── textual-docs/                   # Textual framework reference
+    ├── textual-docs/                   # Textual framework reference
+    ├── README-search.md                # Module documentation
+    ├── README-carve-file.md            # Module documentation
+    └── README-enumerate.md             # Module documentation
 ```
 
 ## Core Modules
@@ -172,5 +170,5 @@ from app.core.utils.tar_parser import TarEntry, parse_tar_header
 ## Notes
 
 - Original `app/modules/carve/src/` is kept for reference but should be removed after full verification
-- The `data/` directory is for runtime data and should not be committed (except `.gitkeep`)
+- The `app/data/` directory is for runtime data; contents are gitignored (only `.gitkeep` is committed)
 - All modules support standalone CLI execution for testing

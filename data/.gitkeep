@@ -1,4 +1,0 @@
-# This directory contains runtime data
-# - cache/: Layer cache
-# - output/: Carved files output
-# - docker-dorker.db: SQLite database

@@ -1,0 +1,25 @@
+# loot
+**/*.json
+**/*.db
+**/*.tar.gz
+**/*.tgz
+app/data/*
+
+# py
+**/*.pyc
+**/__pycache__/
+
+# emv
+.env
+**/*.env
+**/token_pull.txt
+
+# ide
+.cursorignore
+.roo/
+*.code-workspace
+.claude/
+.rooignore
+
+#docs 
+docs/texual-docs/
