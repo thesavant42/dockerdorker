@@ -16,9 +16,9 @@ token_pull.txt
 
 # ide
 .cursorignore
-.roo/
+/.roo/
 *.code-workspace
-.claude/
+/.claude/
 .rooignore
 
 #docs 
