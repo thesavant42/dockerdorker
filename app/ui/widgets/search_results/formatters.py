@@ -1,11 +1,10 @@
-"""Card formatting utilities for search results."""
+"""Table formatting utilities for search results."""
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
-from rich.console import RenderableType
-from rich.text import Text
+from app.core.utils.formatters import abbreviate_arch, abbreviate_os, format_date
 
 
 def format_count(count: Any) -> str:
@@ -34,57 +33,43 @@ def format_count(count: Any) -> str:
     return str(count)
 
 
-def format_card(result: Dict[str, Any]) -> RenderableType:
-    """Format a single result as a Rich Text card.
+def format_table_row(result: Dict[str, Any], index: int) -> Tuple[str, ...]:
+    """Format a single result as a table row tuple.
     
     Args:
-        result: Dictionary containing result data with keys:
-            - name: Repository name
-            - publisher: Publisher/owner name
-            - updated_at: Last update timestamp
-            - star_count: Number of stars
-            - pull_count: Number of pulls
-            - short_description: Brief description
-            
+        result: Dictionary containing result data.
+        index: Row number (1-based) for label.
+        
     Returns:
-        Rich Text object formatted as a card.
+        Tuple of (label, name, pulls, stars, updated, os, arch, description).
     """
-    name = result.get("name", "unknown")
-    publisher = result.get("publisher", "")
-    updated_at = result.get("updated_at", "")
-    star_count = result.get("star_count", 0) or 0
+    name = result.get("name", "")
     pull_count = result.get("pull_count", 0) or 0
+    star_count = result.get("star_count", 0) or 0
+    updated_at = result.get("updated_at", "")
+    os_list = result.get("operating_systems", []) or []
+    arch_list = result.get("architectures", []) or []
     description = result.get("short_description", "") or ""
 
-    # Format display name
-    if publisher and publisher != name.split("/")[0]:
-        display_name = f"{publisher}/{name}"
-    else:
-        display_name = name
-
-    # Format date (extract just the date part)
-    if updated_at and "T" in str(updated_at):
-        date_str = str(updated_at).split("T")[0]
-    else:
-        date_str = str(updated_at)[:10] if updated_at else "N/A"
-
-    # Format pull count with K/M/B suffix
+    # Format values
     pulls_str = format_count(pull_count)
-
-    # Truncate description
-    max_desc_len = 35
+    stars_str = str(star_count)
+    updated_str = format_date(updated_at) if updated_at else "N/A"
+    os_str = abbreviate_os(os_list)
+    arch_str = abbreviate_arch(arch_list)
+    
+    # Truncate description if very long (but no-wrap in table)
+    max_desc_len = 100
     if len(description) > max_desc_len:
-        description = description[: max_desc_len - 3] + "..."
+        description = description[:max_desc_len - 3] + "..."
 
-    # Build the card text
-    card = Text()
-    card.append(display_name[:25], style="bold cyan")  # Row 1: name
-    card.append("\n")
-    card.append(f"LastPushed: {date_str}", style="dim")  # Row 2: date
-    card.append("\n")
-    card.append(f"* {star_count} ", style="yellow")  # Row 3: stats
-    card.append(f"pulls: {pulls_str}", style="green")
-    card.append("\n")
-    card.append(description, style="italic dim")  # Row 4: description
-
-    return card
+    return (
+        str(index),  # Label (1-based)
+        name,  # Name
+        pulls_str,  # Pulls
+        stars_str,  # Stars
+        updated_str,  # Updated
+        os_str,  # OS
+        arch_str,  # Arch
+        description,  # Description
+    )

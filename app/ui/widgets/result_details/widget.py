@@ -51,8 +51,26 @@ class ResultDetailsWidget(Static):
         slug = result.get("slug", name)
         updated_at = result.get("updated_at", "N/A")
         created_at = result.get("created_at", "N/A")
-        star_count = result.get("star_count", 0) or 0
-        pull_count = result.get("pull_count", 0) or 0
+        
+        # Convert string values to int (API returns strings)
+        def to_int(val: Any, default: int = 0) -> int:
+            """Convert value to int, handling strings from API."""
+            if val is None:
+                return default
+            if isinstance(val, int):
+                return val
+            if isinstance(val, str):
+                try:
+                    # Try to convert string to int (strip whitespace, handle empty)
+                    return int(float(val.strip())) if val.strip() else default
+                except (ValueError, AttributeError):
+                    return default
+            if isinstance(val, (float, complex)):
+                return int(val)
+            return default
+        
+        star_count = to_int(result.get("star_count"), 0)
+        pull_count = to_int(result.get("pull_count"), 0)
         description = result.get("short_description", "") or "No description"
         os_list = result.get("operating_systems", []) or []
         arch_list = result.get("architectures", []) or []

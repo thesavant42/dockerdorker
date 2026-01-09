@@ -50,3 +50,65 @@ class SearchError(Message):
         self.query = query
         self.error = error
         super().__init__()
+
+
+class RowHighlighted(Message):
+    """Posted when a row is highlighted in search results."""
+
+    def __init__(self, result: dict) -> None:
+        """Initialize with highlighted result.
+        
+        Args:
+            result: Dictionary containing result data.
+        """
+        self.result = result
+        super().__init__()
+
+
+class EnumerateTagsRequested(Message):
+    """Posted when user requests tag enumeration."""
+
+    def __init__(self, namespace: str, repo: str) -> None:
+        """Initialize with repository info.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+        """
+        self.namespace = namespace
+        self.repo = repo
+        super().__init__()
+
+
+class EnumerateTagsComplete(Message):
+    """Posted when tag enumeration completes."""
+
+    def __init__(self, namespace: str, repo: str, tags: list) -> None:
+        """Initialize with tag data.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+            tags: List of tag dictionaries.
+        """
+        self.namespace = namespace
+        self.repo = repo
+        self.tags = tags
+        super().__init__()
+
+
+class EnumerateTagsError(Message):
+    """Posted when tag enumeration fails."""
+
+    def __init__(self, namespace: str, repo: str, error: str) -> None:
+        """Initialize with error details.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+            error: Error message describing the failure.
+        """
+        self.namespace = namespace
+        self.repo = repo
+        self.error = error
+        super().__init__()

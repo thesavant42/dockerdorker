@@ -56,6 +56,18 @@ Footer {
     scrollbar-size: 4 4;
 }
 
+/* Ensure table cells don't wrap and reduce padding */
+#search-results > .datatable--cell {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    padding: 0 1;
+}
+
+/* Reduce header padding */
+#search-results > .datatable--header {
+    padding: 0 1;
+}
+
 /* DataTable cursor styling for card selection */
 #search-results > .datatable--cursor {
     background: $accent;
