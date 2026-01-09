@@ -85,19 +85,19 @@ class ResultDetailsWidget(Static):
         os_list = result.get("operating_systems", []) or []
         arch_list = result.get("architectures", []) or []
 
-        # Construct slug from publisher/name to avoid API slug issues
-        slug = f"{publisher}/{name}" if publisher else name
-        display_name = slug
+        # Use API slug or fallback to name
+        slug = result.get("slug", "") or name
+        display_name = name
         table = self._build_info_table(
             display_name, slug, publisher, star_count, pull_count,
             created_at, updated_at, os_list, arch_list
         )
 
         content = Text()
+        content.append_text(self._table_to_text(table))
+        content.append("\n")
         content.append("Description: ", style="bold")
         content.append(description, style="italic")
-        content.append("\n\n")
-        content.append_text(self._table_to_text(table))
         
         if self._status_text:
             content.append("\n\n")
@@ -124,18 +124,12 @@ class ResultDetailsWidget(Static):
         table.add_row("Repository", Text(display_name, style="bold cyan"))
         table.add_row("Slug", slug)
         table.add_row("Publisher", publisher or "N/A")
-        table.add_row("", "")
         table.add_row("Stars", Text(str(star_count), style="yellow"))
         table.add_row("Pulls", Text(format_count(pull_count), style="green"))
-        table.add_row("", "")
         table.add_row("Created", format_date(created_at))
         table.add_row("Updated", format_date(updated_at))
-
-        if os_list:
-            table.add_row("", "")
-            table.add_row("OS", ", ".join(os_list[:5]))
-        if arch_list:
-            table.add_row("Arch", ", ".join(arch_list[:5]))
+        table.add_row("OS", ", ".join(os_list[:5]) if os_list else "N/A")
+        table.add_row("Arch", ", ".join(arch_list[:5]) if arch_list else "N/A")
 
         return table
 
