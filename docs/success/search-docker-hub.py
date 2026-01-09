@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""
+Standalone Docker Hub search script.
+Self-contained - no external dependencies beyond 'requests'.
+
+Usage: python search-docker-hub.py <query>
+"""
+
+import math
+import sys
+import time
+from typing import Any, Dict, List
+
+import requests
+
+# --- Constants ---
+
+HEADERS = {
+    "Host": "hub.docker.com",
+    "Cookie": "search-dialog-recent-searches=WyJkaXNuZXkiXQ%3D%3D",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+    "Accept": "*/*",
+    "Referer": "https://hub.docker.com/u/ai",
+    "Accept-Encoding": "gzip, deflate, br",
+}
+
+BASE_URL = "https://hub.docker.com/search.data"
+MAX_RETRIES = 3
+BACKOFF_DELAYS = [1, 2, 4, 8]
+RATE_LIMIT_DELAY = 0.5
+
+
+# --- HTTP Fetching ---
+
+def fetch_page(query: str, page: int = 1) -> requests.Response:
+    """Fetch a single page of search results with retry backoff."""
+    params = {
+        "q": query,
+        "sort": "updated_at",
+        "order": "desc",
+        "page": page,
+    }
+
+    last_error = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.get(BASE_URL, params=params, headers=HEADERS)
+            response.raise_for_status()
+            return response
+        except requests.RequestException as e:
+            last_error = e
+            if attempt < MAX_RETRIES - 1:
+                delay = BACKOFF_DELAYS[min(attempt, len(BACKOFF_DELAYS) - 1)]
+                time.sleep(delay)
+
+    raise last_error
+
+
+# --- Parsing Functions ---
+
+def resolve_value(data: List, index: int) -> Any:
+    """Resolve a value from the indexed JSON array, returning None if invalid."""
+    if index < 0 or index >= len(data):
+        return None
+    return data[index]
+
+
+def parse_result(data: List, result_index: int) -> Dict[str, Any]:
+    """Parse a single result from Docker Hub's indexed JSON format."""
+    result_obj = data[result_index]
+    if not isinstance(result_obj, dict):
+        return {}
+
+    parsed = {}
+
+    field_mappings = {
+        "_30": "id",
+        "_32": "name",
+        "_33": "slug",
+        "_34": "type",
+        "_40": "created_at",
+        "_42": "updated_at",
+        "_44": "short_description",
+        "_46": "badge",
+        "_48": "star_count",
+        "_50": "pull_count",
+    }
+
+    for key, field_name in field_mappings.items():
+        if key in result_obj:
+            value_index = result_obj[key]
+            parsed[field_name] = resolve_value(data, value_index)
+
+    # Handle publisher (object)
+    if "_36" in result_obj:
+        pub_index = result_obj["_36"]
+        pub_obj = resolve_value(data, pub_index)
+        if isinstance(pub_obj, dict) and "_32" in pub_obj:
+            parsed["publisher"] = resolve_value(data, pub_obj["_32"])
+        else:
+            parsed["publisher"] = pub_obj
+
+    # Handle operating_systems (array of objects)
+    if "_57" in result_obj:
+        os_arr_index = result_obj["_57"]
+        os_arr = resolve_value(data, os_arr_index)
+        if isinstance(os_arr, list):
+            os_list = []
+            for idx in os_arr:
+                obj = resolve_value(data, idx)
+                if isinstance(obj, dict) and "_32" in obj:
+                    os_list.append(resolve_value(data, obj["_32"]))
+            parsed["operating_systems"] = os_list
+            parsed["os_count"] = len(os_list)
+
+    # Handle architectures (array of objects)
+    if "_63" in result_obj:
+        arch_arr_index = result_obj["_63"]
+        arch_arr = resolve_value(data, arch_arr_index)
+        if isinstance(arch_arr, list):
+            arch_list = []
+            for idx in arch_arr:
+                obj = resolve_value(data, idx)
+                if isinstance(obj, dict) and "_32" in obj:
+                    arch_list.append(resolve_value(data, obj["_32"]))
+            parsed["architectures"] = arch_list
+            parsed["architecture_count"] = len(arch_list)
+
+    return parsed
+
+
+def parse_response(data: List) -> Dict[str, Any]:
+    """Parse full Docker Hub response, returning total, page_size, and results."""
+    total = None
+    results_indices = None
+    page_size = 30
+
+    for i, item in enumerate(data):
+        if item == "total" and i + 1 < len(data):
+            total = data[i + 1]
+        elif item == "results" and i + 1 < len(data):
+            results_indices = data[i + 1]
+        elif item == "pageSize" and i + 1 < len(data):
+            page_size = data[i + 1]
+
+    results = []
+    if results_indices:
+        for idx in results_indices:
+            parsed = parse_result(data, idx)
+            if parsed:
+                results.append(parsed)
+
+    return {
+        "total": total or 0,
+        "page_size": page_size,
+        "results": results,
+    }
+
+
+# --- Search Function ---
+
+def search(query: str) -> Dict[str, Any]:
+    """Search Docker Hub, paginating through all results."""
+    print(f"Searching for: {query}", file=sys.stderr)
+    print(f"Fetching page 1...", file=sys.stderr)
+
+    response = fetch_page(query, page=1)
+    data = response.json()
+
+    parsed = parse_response(data)
+    total = parsed["total"]
+    page_size = parsed["page_size"]
+    total_pages = math.ceil(total / page_size) if total > 0 else 1
+
+    all_results = parsed["results"]
+
+    for page in range(2, total_pages + 1):
+        time.sleep(RATE_LIMIT_DELAY)
+        print(f"Fetching page {page} of {total_pages}...", file=sys.stderr)
+
+        response = fetch_page(query, page=page)
+        data = response.json()
+        parsed = parse_response(data)
+        all_results.extend(parsed["results"])
+
+    print(f"Complete: {len(all_results)} results", file=sys.stderr)
+
+    return {
+        "query": query,
+        "total": total,
+        "total_pages": total_pages,
+        "results": all_results,
+    }
+
+
+# --- Output Functions ---
+
+def format_pulls(count: Any) -> str:
+    """Format pull count with K/M/B suffix."""
+    if count is None:
+        return "-"
+    # Convert string to int if needed
+    if isinstance(count, str):
+        try:
+            count = int(count)
+        except ValueError:
+            return count
+    if count >= 1_000_000_000:
+        return f"{count / 1_000_000_000:.1f}B"
+    if count >= 1_000_000:
+        return f"{count / 1_000_000:.1f}M"
+    if count >= 1_000:
+        return f"{count / 1_000:.1f}K"
+    return str(count)
+
+
+def print_table(results: Dict[str, Any]) -> None:
+    """Print results as a formatted table."""
+    print(f"\nDocker Hub Search Results for: {results['query']}")
+    print(f"Total: {results['total']} results\n")
+
+    if not results["results"]:
+        print("No results found.")
+        return
+
+    # Column widths
+    type_w = 8
+    stars_w = 6
+    pulls_w = 6
+    name_w = 70
+    desc_w = 80
+
+    # Header
+    header = f"{'Type':<{type_w}} {'Fav':>{stars_w}} {'Pulls':>{pulls_w}} {'Name':<{name_w}} {'Desc':<{desc_w}}"
+    print(header)
+    print("-" * len(header))
+
+    for r in results["results"]:
+        name = (r.get("name") or "-")[:name_w]
+        rtype = (r.get("type") or "-")[:type_w]
+        stars = r.get("star_count") or 0
+        pulls = format_pulls(r.get("pull_count"))
+        desc = (r.get("short_description") or "-")[:desc_w]
+
+        print(f"{rtype:<{type_w}} {stars:>{stars_w}} {pulls:>{pulls_w}} {name:<{name_w}} {desc:<{desc_w}}")
+
+
+# --- Main ---
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python search-docker-hub.py <query>", file=sys.stderr)
+        sys.exit(1)
+
+    query = sys.argv[1]
+    results = search(query)
+    print_table(results)

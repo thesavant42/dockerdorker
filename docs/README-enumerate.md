@@ -8,14 +8,11 @@
 
 ```bash
 Usage:
-    python experiments/list_dockerhub_container_files.py ubuntu:24.04
-    python experiments/list_dockerhub_container_files.py nginx:alpine
     python experiments/list_dockerhub_container_files.py aciliadevops/disney-local-web:latest
 ```
-- Based on the streaming approach proven in experiments/success/streampartial/test_partial_tar.py
+ - This is *not* the API module; this is a standalone script that can be used to compare results with the dockerdocker API results.
 
-
-Output at `plans\to-do\plan-pseudo-tty-filesystem-formatting\raw-text-output\krafton-jungle.files.txt`
+Output is [here](plans\to-do\plan-pseudo-tty-filesystem-formatting)
  - it's 726 lines, don't try to read it all at once. Here's a sample:
 
  ```bash
