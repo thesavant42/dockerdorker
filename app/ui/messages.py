@@ -112,3 +112,77 @@ class EnumerateTagsError(Message):
         self.repo = repo
         self.error = error
         super().__init__()
+
+
+class TagSelected(Message):
+    """Posted when a tag is selected from the tag selector."""
+
+    def __init__(self, namespace: str, repo: str, tag_name: str, tag_data: dict) -> None:
+        """Initialize with tag selection details.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+            tag_name: The selected tag name.
+            tag_data: Full tag dictionary from API.
+        """
+        self.namespace = namespace
+        self.repo = repo
+        self.tag_name = tag_name
+        self.tag_data = tag_data
+        super().__init__()
+
+
+class FetchImageConfigRequested(Message):
+    """Posted when image config fetch is requested."""
+
+    def __init__(self, namespace: str, repo: str, tag_name: str) -> None:
+        """Initialize with fetch request details.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+            tag_name: Tag name to fetch images for.
+        """
+        self.namespace = namespace
+        self.repo = repo
+        self.tag_name = tag_name
+        super().__init__()
+
+
+class FetchImageConfigComplete(Message):
+    """Posted when image config fetch completes."""
+
+    def __init__(self, namespace: str, repo: str, tag_name: str, images: list[dict]) -> None:
+        """Initialize with fetched image configs.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+            tag_name: Tag name that was fetched.
+            images: List of image config dictionaries.
+        """
+        self.namespace = namespace
+        self.repo = repo
+        self.tag_name = tag_name
+        self.images = images
+        super().__init__()
+
+
+class FetchImageConfigError(Message):
+    """Posted when image config fetch fails."""
+
+    def __init__(self, namespace: str, repo: str, tag_name: str, error: str) -> None:
+        """Initialize with error details.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+            tag_name: Tag name that failed.
+            error: Error message describing the failure.
+        """
+        self.namespace = namespace
+        self.repo = repo
+        self.tag_name = tag_name
+        self.error = error
+        super().__init__()

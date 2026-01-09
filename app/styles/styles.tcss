@@ -73,8 +73,53 @@ Footer {
     background: $accent;
 }
 
-/* Result details widget - scrollable full height */
+/* Top panel content - horizontal layout for details and tag selector */
+#top-panel-content {
+    height: 100%;
+    width: 100%;
+}
+
+/* Result details widget - takes most of top panel width */
 #result-details {
+    width: 1fr;
     height: 100%;
     overflow-y: auto;
+}
+
+/* Tag selector dropdown - compact in top panel */
+#tag-selector {
+    width: 30;
+    height: 3;
+    margin: 0 1;
+}
+
+/* Right panel TabbedContent - fills entire right panel */
+#right-panel > TabbedContent {
+    height: 1fr;
+    width: 100%;
+}
+
+/* TabPane children need to fill available space */
+#right-panel > TabbedContent > TabPane {
+    height: 1fr;
+}
+
+/* Build info scroll container - handles scrolling */
+#build-info-scroll {
+    height: 1fr;
+    scrollbar-size: 4 4;
+}
+
+/* Build info widget - content with text wrapping */
+#build-info {
+    padding: 1;
+    text-wrap: wrap;
+}
+
+/* Filesystem placeholder */
+#filesystem-placeholder {
+    height: 1fr;
+    padding: 1;
+    text-align: center;
+    color: $text-muted;
 }

@@ -16,20 +16,26 @@ from textual.widgets import DataTable, Footer, Header
 
 from app.core.api.dockerhub_search import search as dockerhub_search
 from app.core.api.dockerhub_v2_api import fetch_all_tags
+from app.core.utils.image_config_formatter import parse_image_config
 from app.ui.commands.search_provider import SearchProvider
 from app.ui.messages import (
     EnumerateTagsComplete,
     EnumerateTagsError,
     EnumerateTagsRequested,
+    FetchImageConfigComplete,
+    FetchImageConfigError,
     RowHighlighted,
     SearchComplete,
     SearchError,
     SearchRequested,
+    TagSelected,
 )
 from app.ui.panels import LeftPanel, RightPanel, TopPanel
+from app.ui.widgets.build_info import BuildInfoWidget
 from app.ui.widgets.pagination import PaginationWidget
 from app.ui.widgets.result_details import ResultDetailsWidget
 from app.ui.widgets.search_results import SearchResultsWidget
+from app.ui.widgets.tag_selector import TagSelectorWidget
 
 
 class DockerDorkerApp(App):
@@ -154,11 +160,67 @@ class DockerDorkerApp(App):
         self._set_status(
             f"Found {len(message.tags)} tags for {message.namespace}/{message.repo}"
         )
+        tag_selector = self.query_one("#tag-selector", TagSelectorWidget)
+        tag_selector.load_tags(message.namespace, message.repo, message.tags)
 
     def on_enumerate_tags_error(self, message: EnumerateTagsError) -> None:
         """Handle tag enumeration error."""
         self._set_status(
             f"Tag enumeration failed: {message.error}"
+        )
+
+    def on_tag_selected(self, message: TagSelected) -> None:
+        """Handle tag selection."""
+        self._set_status(f"Fetching images for {message.tag_name}...")
+        self._fetch_image_config(message.namespace, message.repo, message.tag_name)
+
+    @work(exclusive=True, thread=True)
+    def _fetch_image_config(self, namespace: str, repo: str, tag_name: str) -> None:
+        """Fetch image configs in a background thread.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+            tag_name: Tag name to fetch images for.
+        """
+        from app.core.api.dockerhub_v2_api import fetch_tag_images
+        try:
+            response = fetch_tag_images(namespace, repo, tag_name)
+            # Handle both list and dict responses
+            if isinstance(response, dict):
+                images = response.get("results", response.get("images", []))
+            else:
+                images = response if isinstance(response, list) else []
+            
+            self.call_from_thread(
+                self.post_message,
+                FetchImageConfigComplete(namespace, repo, tag_name, images)
+            )
+        except Exception as e:
+            self.call_from_thread(
+                self.post_message,
+                FetchImageConfigError(namespace, repo, tag_name, str(e))
+            )
+
+    def on_fetch_image_config_complete(self, message: FetchImageConfigComplete) -> None:
+        """Handle image config fetch completion."""
+        count = len(message.images)
+        self._set_status(f"Loaded {count} image config(s) for {message.tag_name}")
+        # Store for next phase (layer peek)
+        self._current_images = message.images
+        
+        # Parse and display the first image config in BuildInfoWidget
+        if message.images:
+            first_image = message.images[0]
+            if isinstance(first_image, dict):
+                summary = parse_image_config(first_image)
+                build_info = self.query_one("#build-info", BuildInfoWidget)
+                build_info.load_config(summary)
+
+    def on_fetch_image_config_error(self, message: FetchImageConfigError) -> None:
+        """Handle image config fetch error."""
+        self._set_status(
+            f"Image config fetch failed: {message.error}"
         )
 
 
