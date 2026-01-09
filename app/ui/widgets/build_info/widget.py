@@ -27,6 +27,38 @@ class BuildInfoWidget(Static):
         content = self._format_build_info(summary)
         self.update(content)
     
+    def _format_instruction(self, instruction: str, instruction_type: str, max_length: int = 80) -> str:
+        """Format a long instruction with line breaks at logical points.
+        
+        Args:
+            instruction: The instruction text to format.
+            instruction_type: The instruction type (RUN, COPY, etc.).
+            max_length: Maximum length before splitting.
+            
+        Returns:
+            Formatted instruction with line breaks at && or | if needed.
+        """
+        if len(instruction) <= max_length:
+            return instruction
+        
+        # Split at && or | if present
+        if " && " in instruction:
+            parts = instruction.split(" && ")
+            formatted = parts[0]
+            indent = " " * (len(instruction_type) + 2)  # "  RUN: " = 6 spaces
+            for part in parts[1:]:
+                formatted += "\n" + indent + "&& " + part
+            return formatted
+        elif " | " in instruction:
+            parts = instruction.split(" | ")
+            formatted = parts[0]
+            indent = " " * (len(instruction_type) + 2)
+            for part in parts[1:]:
+                formatted += "\n" + indent + "| " + part
+            return formatted
+        
+        return instruction
+    
     def _format_build_info(self, summary: ImageConfigSummary) -> str:
         """Format ImageConfigSummary into displayable text.
         
@@ -88,11 +120,22 @@ class BuildInfoWidget(Static):
         
         # Layers
         if summary.layers:
+            lines.append("")
             lines.append("Layers:")
             for layer in summary.layers:
+                lines.append("")
                 lines.append(f"  Layer {layer.index}: {layer.short_digest} ({layer.size_formatted})")
                 if layer.instruction:
-                    lines.append(f"    {layer.instruction_type}: {layer.instruction}")
-            lines.append("")
+                    formatted_instruction = self._format_instruction(
+                        layer.instruction, 
+                        layer.instruction_type
+                    )
+                    # Split multi-line instructions and add each line with proper indentation
+                    instruction_lines = formatted_instruction.split("\n")
+                    for i, inst_line in enumerate(instruction_lines):
+                        if i == 0:
+                            lines.append(f"    {layer.instruction_type}: {inst_line}")
+                        else:
+                            lines.append(f"      {inst_line}")
         
         return "\n".join(lines)
