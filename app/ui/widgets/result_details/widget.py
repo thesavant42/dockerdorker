@@ -59,7 +59,6 @@ class ResultDetailsWidget(Static):
         """
         name = result.get("name", "unknown")
         publisher = result.get("publisher", "")
-        slug = result.get("slug", name)
         updated_at = result.get("updated_at", "N/A")
         created_at = result.get("created_at", "N/A")
         
@@ -86,7 +85,9 @@ class ResultDetailsWidget(Static):
         os_list = result.get("operating_systems", []) or []
         arch_list = result.get("architectures", []) or []
 
-        display_name = f"{publisher}/{name}" if publisher else name
+        # Construct slug from publisher/name to avoid API slug issues
+        slug = f"{publisher}/{name}" if publisher else name
+        display_name = slug
         table = self._build_info_table(
             display_name, slug, publisher, star_count, pull_count,
             created_at, updated_at, os_list, arch_list

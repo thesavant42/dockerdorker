@@ -32,7 +32,6 @@ from app.ui.messages import (
 )
 from app.ui.panels import LeftPanel, RightPanel, TopPanel
 from app.ui.widgets.build_info import BuildInfoWidget
-from app.ui.widgets.pagination import PaginationWidget
 from app.ui.widgets.result_details import ResultDetailsWidget
 from app.ui.widgets.search_results import SearchResultsWidget
 from app.ui.widgets.tag_selector import TagSelectorWidget
@@ -102,9 +101,6 @@ class DockerDorkerApp(App):
             page=1,
             total_pages=total_pages,
         )
-
-        pagination = self.query_one("#pagination", PaginationWidget)
-        pagination.show(1, total_pages)
 
     def on_search_error(self, message: SearchError) -> None:
         """Handle search errors."""

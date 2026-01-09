@@ -7,7 +7,6 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Static, TabbedContent, TabPane
 
 from app.ui.widgets.build_info import BuildInfoWidget
-from app.ui.widgets.pagination import PaginationWidget
 from app.ui.widgets.result_details import ResultDetailsWidget
 from app.ui.widgets.search_results import SearchResultsWidget
 from app.ui.widgets.tag_selector import TagSelectorWidget
@@ -24,11 +23,10 @@ class TopPanel(Static):
 
 
 class LeftPanel(Vertical):
-    """Left panel widget - contains search results and pagination."""
+    """Left panel widget - contains search results."""
 
     def compose(self) -> ComposeResult:
-        """Compose the left panel with pagination and search results."""
-        yield PaginationWidget(id="pagination")
+        """Compose the left panel with search results."""
         yield SearchResultsWidget(id="search-results")
 
 
