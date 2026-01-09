@@ -8,6 +8,7 @@
 # py
 **/*.pyc
 **/__pycache__/*
+*.pyc
 
 # emv
 .env
@@ -23,3 +24,6 @@ token_pull.txt
 
 #docs 
 /docs/textual-docs/
+/app/core/__pycache__
+/app/__pycache__
+**/__pycache__/*
