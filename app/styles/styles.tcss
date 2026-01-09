@@ -84,9 +84,17 @@ Footer {
     width: 1fr;
     height: 100%;
     overflow-y: auto;
+    content-align: left middle;
 }
 
-/* Tag selector dropdown - compact in top panel */
+/* Tag selector container - aligns selector to bottom-right */
+#tag-selector-container {
+    width: auto;
+    height: 100%;
+    align: right bottom;
+}
+
+/* Tag selector dropdown */
 #tag-selector {
     width: 30;
     height: 3;

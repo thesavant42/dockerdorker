@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.widgets import Static, TabbedContent, TabPane
 
 from app.ui.widgets.build_info import BuildInfoWidget
@@ -19,7 +19,8 @@ class TopPanel(Static):
         """Compose the top panel with result details and tag selector."""
         with Horizontal(id="top-panel-content"):
             yield ResultDetailsWidget(id="result-details")
-            yield TagSelectorWidget(id="tag-selector")
+            with Container(id="tag-selector-container"):
+                yield TagSelectorWidget(id="tag-selector")
 
 
 class LeftPanel(Vertical):
