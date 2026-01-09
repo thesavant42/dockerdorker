@@ -9,12 +9,17 @@ from textual.widgets import Static
 from app.core.utils.image_config_formatter import ImageConfigSummary
 
 
+def _escape_markup(text: str) -> str:
+    """Escape square brackets in text to prevent markup interpretation."""
+    return text.replace("[", r"\[").replace("]", r"\]")
+
+
 class BuildInfoWidget(Static):
     """Widget for displaying parsed Docker image build information."""
 
     def __init__(self, **kwargs) -> None:
         """Initialize the build info widget."""
-        super().__init__("", markup=False, **kwargs)
+        super().__init__("", markup=True, **kwargs)
         self._current_summary: Optional[ImageConfigSummary] = None
 
     def load_config(self, summary: ImageConfigSummary) -> None:
@@ -38,6 +43,9 @@ class BuildInfoWidget(Static):
         Returns:
             Formatted instruction with line breaks at && or | if needed.
         """
+        # Escape markup characters first
+        instruction = _escape_markup(instruction)
+        
         if len(instruction) <= max_length:
             return instruction
         
@@ -90,24 +98,24 @@ class BuildInfoWidget(Static):
         
         # Working directory
         if summary.workdir:
-            lines.append(f"WORKDIR: {summary.workdir}")
+            lines.append(f"WORKDIR: {_escape_markup(summary.workdir)}")
             lines.append("")
         
         # Entrypoint
         if summary.entrypoint:
-            entrypoint_str = " ".join(str(item) for item in summary.entrypoint)
+            entrypoint_str = " ".join(_escape_markup(str(item)) for item in summary.entrypoint)
             lines.append(f"ENTRYPOINT: {entrypoint_str}")
             lines.append("")
         
         # CMD
         if summary.cmd:
-            cmd_str = " ".join(str(item) for item in summary.cmd)
+            cmd_str = " ".join(_escape_markup(str(item)) for item in summary.cmd)
             lines.append(f"CMD: {cmd_str}")
             lines.append("")
         
         # Exposed ports
         if summary.exposed_ports:
-            ports_str = ", ".join(str(port) for port in summary.exposed_ports)
+            ports_str = ", ".join(_escape_markup(str(port)) for port in summary.exposed_ports)
             lines.append(f"EXPOSE: {ports_str}")
             lines.append("")
         
@@ -115,7 +123,7 @@ class BuildInfoWidget(Static):
         if summary.env_vars:
             lines.append("ENV Variables:")
             for key, value in sorted(summary.env_vars.items()):
-                lines.append(f"  {key}={value}")
+                lines.append(f"  {_escape_markup(key)}={_escape_markup(value)}")
             lines.append("")
         
         # Layers
@@ -124,7 +132,9 @@ class BuildInfoWidget(Static):
             lines.append("Layers:")
             for layer in summary.layers:
                 lines.append("")
-                lines.append(f"  Layer {layer.index}: {layer.short_digest} ({layer.size_formatted})")
+                # Colorize layer number, digest, and size
+                layer_line = f"  [bold green]Layer {layer.index}[/]: [cyan]{layer.short_digest}[/] [yellow]({layer.size_formatted})[/]"
+                lines.append(layer_line)
                 if layer.instruction:
                     formatted_instruction = self._format_instruction(
                         layer.instruction, 
@@ -134,7 +144,8 @@ class BuildInfoWidget(Static):
                     instruction_lines = formatted_instruction.split("\n")
                     for i, inst_line in enumerate(instruction_lines):
                         if i == 0:
-                            lines.append(f"    {layer.instruction_type}: {inst_line}")
+                            # Colorize instruction type
+                            lines.append(f"    [bold]{layer.instruction_type}[/]: {inst_line}")
                         else:
                             lines.append(f"      {inst_line}")
         

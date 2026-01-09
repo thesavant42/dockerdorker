@@ -29,11 +29,23 @@ class TagSelectorWidget(Select[str]):
         """
         self._namespace = namespace
         self._repo = repo
-        self._tags = tags
+        
+        # Sort tags by last_pushed (most recent first) if available
+        sorted_tags = sorted(
+            tags,
+            key=lambda t: t.get("last_pushed", t.get("last_updated", "")),
+            reverse=True
+        )
+        self._tags = sorted_tags
         
         # Build options: (display_label, value)
-        options = [(tag.get("name", "unknown"), tag.get("name", "unknown")) for tag in tags]
+        options = [(tag.get("name", "unknown"), tag.get("name", "unknown")) for tag in sorted_tags]
         self.set_options(options)
+        
+        # Auto-select the first (most recent) tag
+        if options:
+            first_tag_name = options[0][1]
+            self.value = first_tag_name
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle tag selection change."""
