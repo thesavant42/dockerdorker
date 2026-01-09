@@ -128,12 +128,29 @@ class BuildInfoWidget(Static):
         
         # Build History (Dockerfile commands from registry config blob)
         if summary.build_history:
+            lines.append("")
             lines.append("Build History:")
             for entry in summary.build_history:
+                lines.append("")  # Spacing between entries
                 created_by = _escape_markup(entry.created_by)
-                metadata_marker = " (metadata only)" if entry.empty_layer else ""
-                lines.append(f"  [{entry.index}] {created_by}{metadata_marker}")
-            lines.append("")
+                metadata_marker = " [dim](metadata only)[/]" if entry.empty_layer else ""
+                
+                # Extract instruction type for colorization
+                instr_type = ""
+                parts = entry.created_by.strip().split(None, 1)
+                if parts:
+                    cmd = parts[0].upper()
+                    if cmd in ("RUN", "COPY", "ADD", "ENV", "WORKDIR", "EXPOSE", "CMD",
+                               "ENTRYPOINT", "LABEL", "ARG", "USER", "VOLUME", "SHELL"):
+                        instr_type = cmd
+                
+                if instr_type:
+                    # Remove the instruction type from created_by since we'll display it separately
+                    remaining = entry.created_by.strip().split(None, 1)
+                    instruction_content = _escape_markup(remaining[1]) if len(remaining) > 1 else ""
+                    lines.append(f"  [bold green]\\[{entry.index}][/] [bold]{instr_type}[/]: {instruction_content}{metadata_marker}")
+                else:
+                    lines.append(f"  [bold green]\\[{entry.index}][/] {created_by}{metadata_marker}")
         
         # Layers
         if summary.layers:
