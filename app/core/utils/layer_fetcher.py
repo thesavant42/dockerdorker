@@ -74,6 +74,84 @@ def _fetch_pull_token(namespace: str, repo: str) -> Optional[str]:
         return None
 
 
+def fetch_manifest(namespace: str, repo: str, tag: str, token: Optional[str] = None) -> Optional[dict]:
+    """
+    Fetch image manifest from Docker Registry v2 API.
+    
+    Args:
+        namespace: Docker Hub namespace (e.g., "library" for official images)
+        repo: Repository name (e.g., "nginx")
+        tag: Tag name (e.g., "latest")
+        token: Optional auth token, will fetch if not provided
+        
+    Returns:
+        Manifest dictionary, or None on error
+    """
+    if not token:
+        token = _fetch_pull_token(namespace, repo)
+    
+    url = f"{_registry_base_url(namespace, repo)}/manifests/{tag}"
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    
+    try:
+        resp = _session.get(url, headers=headers, timeout=30)
+        
+        # Handle auth retry
+        if resp.status_code == 401:
+            token = _fetch_pull_token(namespace, repo)
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+                resp = _session.get(url, headers=headers, timeout=30)
+        
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+def fetch_build_history(namespace: str, repo: str, config_digest: str, token: Optional[str] = None) -> list[dict]:
+    """
+    Fetch image config blob and extract build history.
+    
+    The config blob contains a 'history' array with 'created_by' fields showing
+    Dockerfile commands like "COPY jenkins-support /usr/local/bin/jenkins-support".
+    
+    Args:
+        namespace: Docker Hub namespace (e.g., "library" for official images)
+        repo: Repository name (e.g., "nginx")
+        config_digest: Config digest from manifest (e.g., "sha256:abc123...")
+        token: Optional auth token, will fetch if not provided
+        
+    Returns:
+        List of history entries, each with 'created_by' and 'empty_layer' fields
+    """
+    if not token:
+        token = _fetch_pull_token(namespace, repo)
+    
+    url = f"{_registry_base_url(namespace, repo)}/blobs/{config_digest}"
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    
+    try:
+        resp = _session.get(url, headers=headers, timeout=30)
+        
+        # Handle auth retry
+        if resp.status_code == 401:
+            token = _fetch_pull_token(namespace, repo)
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+                resp = _session.get(url, headers=headers, timeout=30)
+        
+        resp.raise_for_status()
+        config = resp.json()
+        return config.get("history", [])
+    except requests.RequestException:
+        return []
+
+
 def peek_layer_blob_partial(
     namespace: str,
     repo: str,

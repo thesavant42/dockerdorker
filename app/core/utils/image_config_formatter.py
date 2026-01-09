@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
+from app.core.utils.layer_fetcher import fetch_manifest, fetch_build_history
+
 
 # =============================================================================
 # Utility functions
@@ -56,6 +58,14 @@ class LayerInfo:
 
 
 @dataclass
+class BuildHistoryEntry:
+    """A single entry from the Docker image build history."""
+    index: int              # Step number (1, 2, 3...)
+    created_by: str         # Dockerfile command (e.g., "COPY jenkins-support /usr/local/bin/jenkins-support")
+    empty_layer: bool        # True if this is a metadata-only layer (ENTRYPOINT, CMD, LABEL, etc.)
+
+
+@dataclass
 class ImageConfigSummary:
     """Structured summary of an image configuration."""
     os: str
@@ -71,6 +81,7 @@ class ImageConfigSummary:
     exposed_ports: list[str] = field(default_factory=list)
     env_vars: dict[str, str] = field(default_factory=dict)
     layers: list[LayerInfo] = field(default_factory=list)
+    build_history: list[BuildHistoryEntry] = field(default_factory=list)
 
 
 # =============================================================================
@@ -93,12 +104,60 @@ def _extract_instruction_type(instruction: str) -> str:
     return ""
 
 
-def parse_image_config(image_data: dict) -> ImageConfigSummary:
+def fetch_image_build_history(namespace: str, repo: str, tag: str) -> list[dict]:
+    """
+    Fetch build history for an image from Docker Registry v2 API.
+    
+    This fetches the manifest, extracts the config digest, then fetches
+    the config blob to get the full build history with Dockerfile commands.
+    
+    Args:
+        namespace: Docker Hub namespace (e.g., "library" for official images)
+        repo: Repository name (e.g., "nginx")
+        tag: Tag name (e.g., "latest")
+        
+    Returns:
+        List of history entries, each with 'created_by' and 'empty_layer' fields.
+        Returns empty list on error.
+    """
+    # Fetch manifest to get config digest
+    manifest = fetch_manifest(namespace, repo, tag)
+    if not manifest or not isinstance(manifest, dict):
+        return []
+    
+    # Handle manifest list (multi-arch) - fetch first platform's manifest
+    media_type = manifest.get("mediaType", "")
+    if media_type == "application/vnd.docker.distribution.manifest.list.v2+json":
+        manifests = manifest.get("manifests", [])
+        if manifests and isinstance(manifests[0], dict):
+            # Fetch the actual manifest for the first platform using its digest
+            platform_digest = manifests[0].get("digest")
+            if platform_digest:
+                manifest = fetch_manifest(namespace, repo, platform_digest)
+                if not manifest or not isinstance(manifest, dict):
+                    return []
+    
+    # Extract config digest from manifest
+    # Docker Registry v2 manifest format: {"config": {"digest": "sha256:..."}, ...}
+    config = manifest.get("config")
+    if not isinstance(config, dict):
+        return []
+    
+    config_digest = config.get("digest")
+    if not config_digest:
+        return []
+    
+    # Fetch build history from config blob
+    return fetch_build_history(namespace, repo, config_digest)
+
+
+def parse_image_config(image_data: dict, build_history: Optional[list[dict]] = None) -> ImageConfigSummary:
     """
     Parse image config data into a structured ImageConfigSummary.
     
     Args:
         image_data: The image config dictionary from Docker Hub API
+        build_history: Optional list of build history entries from registry config blob
         
     Returns:
         ImageConfigSummary with all parsed fields
@@ -172,6 +231,19 @@ def parse_image_config(image_data: dict) -> ImageConfigSummary:
                 key, value = env_str.split("=", 1)
                 env_vars[key] = value
     
+    # Parse build history if provided
+    history_entries: list[BuildHistoryEntry] = []
+    if build_history:
+        for idx, entry in enumerate(build_history, start=1):
+            created_by = entry.get("created_by", "").strip()
+            empty_layer = entry.get("empty_layer", False)
+            if created_by:  # Only add non-empty entries
+                history_entries.append(BuildHistoryEntry(
+                    index=idx,
+                    created_by=created_by,
+                    empty_layer=empty_layer,
+                ))
+    
     return ImageConfigSummary(
         os=os_name,
         arch=arch,
@@ -186,6 +258,7 @@ def parse_image_config(image_data: dict) -> ImageConfigSummary:
         exposed_ports=exposed_ports,
         env_vars=env_vars,
         layers=layers,
+        build_history=history_entries,
     )
 
 

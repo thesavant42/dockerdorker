@@ -126,6 +126,15 @@ class BuildInfoWidget(Static):
                 lines.append(f"  {_escape_markup(key)}={_escape_markup(value)}")
             lines.append("")
         
+        # Build History (Dockerfile commands from registry config blob)
+        if summary.build_history:
+            lines.append("Build History:")
+            for entry in summary.build_history:
+                created_by = _escape_markup(entry.created_by)
+                metadata_marker = " (metadata only)" if entry.empty_layer else ""
+                lines.append(f"  [{entry.index}] {created_by}{metadata_marker}")
+            lines.append("")
+        
         # Layers
         if summary.layers:
             lines.append("")

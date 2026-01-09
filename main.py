@@ -19,6 +19,7 @@ from app.core.api.dockerhub_v2_api import fetch_all_tags
 from app.core.utils.image_config_formatter import parse_image_config
 from app.ui.commands.search_provider import SearchProvider
 from app.ui.messages import (
+    BuildHistoryFetched,
     EnumerateTagsComplete,
     EnumerateTagsError,
     EnumerateTagsRequested,
@@ -205,13 +206,41 @@ class DockerDorkerApp(App):
         # Store for next phase (layer peek)
         self._current_images = message.images
         
-        # Parse and display the first image config in BuildInfoWidget
+        # Fetch build history in background
         if message.images:
             first_image = message.images[0]
             if isinstance(first_image, dict):
-                summary = parse_image_config(first_image)
-                build_info = self.query_one("#build-info", BuildInfoWidget)
-                build_info.load_config(summary)
+                self._fetch_build_history(
+                    message.namespace, 
+                    message.repo, 
+                    message.tag_name, 
+                    first_image
+                )
+    
+    @work(exclusive=True, thread=True)
+    def _fetch_build_history(
+        self, namespace: str, repo: str, tag_name: str, image_data: dict
+    ) -> None:
+        """Fetch build history from registry in background thread."""
+        from app.core.utils.image_config_formatter import fetch_image_build_history
+        try:
+            build_history = fetch_image_build_history(namespace, repo, tag_name)
+            self.call_from_thread(
+                self.post_message,
+                BuildHistoryFetched(namespace, repo, tag_name, image_data, build_history)
+            )
+        except Exception:
+            # On error, post with empty build history
+            self.call_from_thread(
+                self.post_message,
+                BuildHistoryFetched(namespace, repo, tag_name, image_data, [])
+            )
+    
+    def on_build_history_fetched(self, message: BuildHistoryFetched) -> None:
+        """Handle build history fetch completion."""
+        summary = parse_image_config(message.image_data, build_history=message.build_history)
+        build_info = self.query_one("#build-info", BuildInfoWidget)
+        build_info.load_config(summary)
 
     def on_fetch_image_config_error(self, message: FetchImageConfigError) -> None:
         """Handle image config fetch error."""

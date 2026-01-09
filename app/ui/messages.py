@@ -186,3 +186,31 @@ class FetchImageConfigError(Message):
         self.tag_name = tag_name
         self.error = error
         super().__init__()
+
+
+class BuildHistoryFetched(Message):
+    """Posted when build history is fetched from the registry."""
+
+    def __init__(
+        self, 
+        namespace: str, 
+        repo: str, 
+        tag_name: str, 
+        image_data: dict, 
+        build_history: list[dict]
+    ) -> None:
+        """Initialize with build history data.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+            tag_name: Tag name that was fetched.
+            image_data: Original image config from Docker Hub API.
+            build_history: Build history entries from registry config blob.
+        """
+        self.namespace = namespace
+        self.repo = repo
+        self.tag_name = tag_name
+        self.image_data = image_data
+        self.build_history = build_history
+        super().__init__()
