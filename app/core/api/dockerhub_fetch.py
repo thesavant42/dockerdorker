@@ -31,7 +31,7 @@ def fetch_page(query: str, page: int = 1) -> requests.Response:
     last_error = None
     for attempt in range(MAX_RETRIES):
         try:
-            response = requests.get(BASE_URL, params=params, headers=HEADERS, proxies=proxies, verify=False)
+            response = requests.get(BASE_URL, params=params, headers=HEADERS, verify=False)
             response.raise_for_status()
             return response
         except (requests.RequestException, OSError) as e:

@@ -12,9 +12,11 @@ from app.ui.widgets.search_results import SearchResultsWidget
 
 
 class TopPanel(Static):
-    """Top panel widget - contains app title/branding."""
+    """Top panel widget - contains result details."""
 
-    pass
+    def compose(self) -> ComposeResult:
+        """Compose the top panel with result details."""
+        yield ResultDetailsWidget(id="result-details")
 
 
 class LeftPanel(Vertical):
@@ -27,8 +29,6 @@ class LeftPanel(Vertical):
 
 
 class RightPanel(Static):
-    """Right panel widget - contains result details."""
+    """Right panel widget - currently empty."""
 
-    def compose(self) -> ComposeResult:
-        """Compose the right panel with result details."""
-        yield ResultDetailsWidget(id="result-details")
+    pass
