@@ -2,8 +2,17 @@
 Docker Hub API shared constants and re-exports.
 """
 
-# Re-export constants
-from app.core.api.constants import HEADERS, RATE_LIMIT_DELAY
+# Exact headers from original implementation - DO NOT MODIFY
+HEADERS = {
+    "Host": "hub.docker.com",
+    "Cookie": "search-dialog-recent-searches=WyJkaXNuZXkiXQ%3D%3D",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+    "Accept": "*/*",
+    "Referer": "https://hub.docker.com/u/ai",
+    "Accept-Encoding": "gzip, deflate, br",
+}
+
+RATE_LIMIT_DELAY = 0.5  # seconds between requests
 
 # Re-export from dockerhub_fetch
 from app.core.api.dockerhub_fetch import fetch_page, BASE_URL, MAX_RETRIES, BACKOFF_DELAYS

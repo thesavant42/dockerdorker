@@ -5,8 +5,6 @@
 /* Header styling - built-in widget with dock:top */
 /* No additional styling needed - Header has its own internal CSS */
 
-
-
 /* Top panel - flows below header in vertical layout (not docked) */
 #top-panel {
     height: 1fr;
@@ -15,23 +13,21 @@
     border: solid $primary;
 }
 
-
-
 /* Main content area - horizontal split for left/right panels */
 #main-content {
     height: 2fr;
 }
 
-/* Left panel - 50% width */
+/* Left panel - 50% width, contains search results */
 #left-panel {
     width: 1fr;
     height: 100%;
-    padding: 1 2;
+    padding: 0;
     background: $surface;
     border: solid $secondary;
 }
 
-/* Right panel - 50% width */
+/* Right panel - 50% width, contains result details */
 #right-panel {
     width: 1fr;
     height: 100%;
@@ -43,4 +39,30 @@
 /* Footer styling - uses built-in dock:bottom */
 Footer {
     dock: bottom;
+}
+
+/* Pagination widget - single line at top of left panel */
+#pagination {
+    height: 1;
+    padding: 0 1;
+    text-align: center;
+    background: $surface-darken-1;
+    color: $text-muted;
+}
+
+/* Search results DataTable - fills remaining left panel space */
+#search-results {
+    height: 1fr;
+    scrollbar-size: 1 1;
+}
+
+/* DataTable cursor styling for card selection */
+#search-results > .datatable--cursor {
+    background: $accent;
+}
+
+/* Result details widget - scrollable full height */
+#result-details {
+    height: 100%;
+    overflow-y: auto;
 }

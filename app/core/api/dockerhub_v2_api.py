@@ -8,7 +8,7 @@ from typing import Dict, List
 
 import requests
 
-from app.core.api.constants import HEADERS, RATE_LIMIT_DELAY
+from app.core.api import HEADERS, RATE_LIMIT_DELAY
 
 TAGS_BASE_URL = "https://hub.docker.com/v2/repositories"
 

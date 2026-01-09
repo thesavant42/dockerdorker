@@ -13,12 +13,17 @@ from typing import Any, Dict, List
 
 import requests
 
+proxies = {
+    'http': 'http://localhost:8080',
+    'https': 'http://localhost:8080',
+}
+
 # --- Constants ---
 
 HEADERS = {
     "Host": "hub.docker.com",
     "Cookie": "search-dialog-recent-searches=WyJkaXNuZXkiXQ%3D%3D",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/536.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
     "Accept": "*/*",
     "Referer": "https://hub.docker.com/u/ai",
     "Accept-Encoding": "gzip, deflate, br",
@@ -44,7 +49,7 @@ def fetch_page(query: str, page: int = 1) -> requests.Response:
     last_error = None
     for attempt in range(MAX_RETRIES):
         try:
-            response = requests.get(BASE_URL, params=params, headers=HEADERS)
+            response = requests.get(BASE_URL, params=params, headers=HEADERS, proxies=proxies, verify=False)
             response.raise_for_status()
             return response
         except requests.RequestException as e:
