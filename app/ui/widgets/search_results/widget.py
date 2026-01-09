@@ -106,7 +106,7 @@ class SearchResultsWidget(DataTable):
 
     @property
     def page_info(self) -> str:
-        """Return current page info string: 'Page X/YYY'."""
+        """Return current page info string: 'Page X/YYY'.""" """Don't think this works? pagination is not relevant"""
         return f"Page {self._current_page:3d}/{self._total_pages:3d}"
 
     def _update_top_panel(self) -> None:

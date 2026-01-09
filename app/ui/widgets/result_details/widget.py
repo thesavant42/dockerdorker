@@ -22,6 +22,7 @@ class ResultDetailsWidget(Static):
         """Initialize the result details widget."""
         super().__init__(self.DEFAULT_MESSAGE, **kwargs)
         self._result: Optional[Dict[str, Any]] = None
+        self._status_text: str = ""
 
     def show_result(self, result: Dict[str, Any]) -> None:
         """Display details for the given result.
@@ -36,6 +37,16 @@ class ResultDetailsWidget(Static):
         """Clear the displayed result."""
         self._result = None
         self.update(self.DEFAULT_MESSAGE)
+
+    def set_status(self, text: str) -> None:
+        """Update the status text displayed in the panel.
+        
+        Args:
+            text: Status message to display.
+        """
+        self._status_text = text
+        if self._result:
+            self.update(self._format_details(self._result))
 
     def _format_details(self, result: Dict[str, Any]) -> RenderableType:
         """Format result details as a Rich renderable.
@@ -82,13 +93,20 @@ class ResultDetailsWidget(Static):
         )
 
         content = Text()
+        content.append("Description: ", style="bold")
         content.append(description, style="italic")
         content.append("\n\n")
         content.append_text(self._table_to_text(table))
+        
+        if self._status_text:
+            content.append("\n\n")
+            content.append("Status: ", style="bold")
+            content.append(self._status_text, style="green")
 
         return Panel(
             content,
-            title=f"[bold]{display_name}[/bold]",
+            subtitle=f"[bold]{slug}[/bold]",
+            subtitle_align="center",
             border_style="cyan",
         )
 

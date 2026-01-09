@@ -105,8 +105,14 @@ class DockerDorkerApp(App):
         self._set_status(f"Search failed: {message.error}")
 
     def _set_status(self, text: str) -> None:
-        """Update status text in subtitle."""
-        self.sub_title = text if text else "by @thesavant42"
+        """Update status text in result details panel."""
+        # Update the result details widget
+        try:
+            details = self.query_one("#result-details", ResultDetailsWidget)
+            details.set_status(text if text else "")
+        except Exception:
+            # Silently fail if widget doesn't exist yet
+            pass
 
     def on_row_highlighted(self, message: RowHighlighted) -> None:
         """Handle row highlight to update top panel."""
