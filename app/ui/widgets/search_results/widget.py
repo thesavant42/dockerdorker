@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from math import ceil
 from typing import Any, Dict, List, Optional
 
 from rich.text import Text
 from textual.widgets import DataTable
 
 from app.ui.widgets.search_results.formatters import format_card
-
 
 class SearchResultsWidget(DataTable):
     """A 4-column grid displaying Docker Hub search results as cards."""
@@ -31,7 +31,7 @@ class SearchResultsWidget(DataTable):
     def on_mount(self) -> None:
         """Set up the table columns on mount."""
         for i in range(self.COLUMNS):
-            self.add_column(f"col{i}", width=None)
+            self.add_column(f"col{i}", width=25%)
 
     def load_results(
         self,
@@ -55,29 +55,44 @@ class SearchResultsWidget(DataTable):
         self._populate_grid()
 
     def _populate_grid(self) -> None:
-        """Populate the DataTable with result cards."""
+        """Populate the DataTable with result cards in column-first order.
+        
+        Results flow top-to-bottom within each column, then left-to-right:
+        Column 1: 1, 2, 3, 4
+        Column 2: 5, 6, 7, 8
+        Column 3: 9, 10, 11, 12
+        Column 4: 13, 14, 15, 16
+        
+        All columns scroll together as a synchronized slab.
+        """
         self.clear()
 
         if not self._results:
             return
 
-        # Group results into rows of 4
-        for i in range(0, len(self._results), self.COLUMNS):
-            row_results = self._results[i : i + self.COLUMNS]
+        # Calculate items per column for column-first distribution
+        items_per_column = ceil(len(self._results) / self.COLUMNS)
+        
+        # Build rows by taking one item from each column position
+        for row_idx in range(items_per_column):
             row_cells = []
-
-            for result in row_results:
-                card = format_card(result)
-                row_cells.append(card)
-
-            # Pad with empty cells if row is incomplete
-            while len(row_cells) < self.COLUMNS:
-                row_cells.append(Text(""))
-
-            self.add_row(*row_cells, key=f"row_{i}")
+            
+            for col_idx in range(self.COLUMNS):
+                # Column-first index: col * items_per_column + row
+                result_idx = col_idx * items_per_column + row_idx
+                
+                if result_idx < len(self._results):
+                    card = format_card(self._results[result_idx])
+                    row_cells.append(card)
+                else:
+                    row_cells.append(Text(""))
+            
+            self.add_row(*row_cells, key=f"row_{row_idx}")
 
     def get_selected_result(self) -> Optional[Dict[str, Any]]:
         """Get the currently selected result data.
+        
+        Uses column-first indexing to match _populate_grid layout.
         
         Returns:
             The result dictionary for the selected cell, or None.
@@ -86,7 +101,10 @@ class SearchResultsWidget(DataTable):
             return None
 
         coord = self.cursor_coordinate
-        result_index = (coord.row * self.COLUMNS) + coord.column
+        items_per_column = ceil(len(self._results) / self.COLUMNS)
+        
+        # Column-first index calculation
+        result_index = coord.column * items_per_column + coord.row
 
         if 0 <= result_index < len(self._results):
             return self._results[result_index]

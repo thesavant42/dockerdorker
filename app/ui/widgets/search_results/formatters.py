@@ -80,10 +80,10 @@ def format_card(result: Dict[str, Any]) -> RenderableType:
     card = Text()
     card.append(display_name[:25], style="bold cyan")  # Row 1: name
     card.append("\n")
-    card.append(f"Updated: {date_str}", style="dim")  # Row 2: date
+    card.append(f"LastPushed: {date_str}", style="dim")  # Row 2: date
     card.append("\n")
     card.append(f"* {star_count} ", style="yellow")  # Row 3: stats
-    card.append(f"Pulls: {pulls_str}", style="green")
+    card.append(f"pulls: {pulls_str}", style="green")
     card.append("\n")
     card.append(description, style="italic dim")  # Row 4: description
 
