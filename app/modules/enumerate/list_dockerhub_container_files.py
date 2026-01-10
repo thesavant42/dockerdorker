@@ -5,8 +5,6 @@ Enumerates all layers and iterates through them to build a complete
 filesystem listing, using HTTP Range requests to minimize bandwidth.
 
 Usage:
-    python experiments/list_dockerhub_container_files.py ubuntu:24.04
-    python experiments/list_dockerhub_container_files.py nginx:alpine
     python experiments/list_dockerhub_container_files.py aciliadevops/disney-local-web:latest
 
 Based on the streaming approach proven in experiments/success/streampartial/test_partial_tar.py

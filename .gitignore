@@ -24,9 +24,7 @@ token_pull.txt
 .rooignore
 
 #docs 
-/docs/textual-docs/
 /app/core/__pycache__
 /app/__pycache__
 **/__pycache__/*
-/docs/legacy-do-not-review
-/docs/success
+

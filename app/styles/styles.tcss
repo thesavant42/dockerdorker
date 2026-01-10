@@ -41,14 +41,6 @@ Footer {
     dock: bottom;
 }
 
-/* Pagination widget - single line at top of left panel */
-#pagination {
-    height: 1;
-    padding: 0 1;
-    text-align: center;
-    background: $surface-darken-1;
-    color: $text-muted;
-}
 
 /* Search results DataTable - fills remaining left panel space */
 #search-results {
