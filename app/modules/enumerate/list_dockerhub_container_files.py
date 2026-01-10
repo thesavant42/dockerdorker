@@ -5,9 +5,7 @@ Enumerates all layers and iterates through them to build a complete
 filesystem listing, using HTTP Range requests to minimize bandwidth.
 
 Usage:
-    python app/modules/enumerate/list_dockerhub_container_files.py ubuntu:24.04
-    python app/modules/enumerate/list_dockerhub_container_files.py nginx:alpine
-    python app/modules/enumerate/list_dockerhub_container_files.py aciliadevops/disney-local-web:latest
+    python app/modules/enumerate/list_dockerhub_container_files.py 'aciliadevops/disney-local-web:latest'
 
 Based on the streaming approach proven in experiments/success/streampartial/test_partial_tar.py
 """
@@ -27,15 +25,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from app.core.utils.tar_parser import TarEntry, parse_tar_header
 
-
-# =============================================================================
-# Configuration
-# =============================================================================
-
 DEFAULT_INITIAL_BYTES = 262144  # 256KB - good balance for file listings
 
 
-# =============================================================================
+
 # Registry Authentication
 # =============================================================================
 
@@ -66,9 +59,8 @@ def registry_base_url(namespace: str, repo: str) -> str:
     return f"https://registry-1.docker.io/v2/{namespace}/{repo}"
 
 
-# =============================================================================
+
 # Image Reference Parsing
-# =============================================================================
 
 def parse_image_ref(image_ref: str) -> tuple[str, str, str]:
     """
@@ -93,9 +85,7 @@ def parse_image_ref(image_ref: str) -> tuple[str, str, str]:
         return "library", image_part, tag
 
 
-# =============================================================================
 # Manifest Fetching
-# =============================================================================
 
 @dataclass
 class LayerInfo:
@@ -153,9 +143,7 @@ def fetch_manifest(namespace: str, repo: str, tag: str, token: str) -> list[Laye
     return layers
 
 
-# =============================================================================
 # Partial Layer Streaming
-# =============================================================================
 
 @dataclass
 class FileEntry:
@@ -285,7 +273,6 @@ def peek_layer(
     )
 
 
-# =============================================================================
 # Main Listing Logic
 # =============================================================================
 
@@ -411,8 +398,6 @@ def list_container_files(
     
     return all_entries
 
-
-# =============================================================================
 # CLI Entry Point
 # =============================================================================
 
