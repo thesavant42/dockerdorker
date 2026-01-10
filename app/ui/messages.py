@@ -214,3 +214,53 @@ class BuildHistoryFetched(Message):
         self.image_data = image_data
         self.build_history = build_history
         super().__init__()
+
+
+class LayerPeekComplete(Message):
+    """Posted when layer peek completes."""
+
+    def __init__(
+        self,
+        namespace: str,
+        repo: str,
+        tag_name: str,
+        result: "LayerSlayerResult",
+    ) -> None:
+        """Initialize with layer peek results.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+            tag_name: Tag name that was peeked.
+            result: LayerSlayerResult with all file entries.
+        """
+        self.namespace = namespace
+        self.repo = repo
+        self.tag_name = tag_name
+        self.result = result
+        super().__init__()
+
+
+class LayerPeekError(Message):
+    """Posted when layer peek fails."""
+
+    def __init__(
+        self,
+        namespace: str,
+        repo: str,
+        tag_name: str,
+        error: str,
+    ) -> None:
+        """Initialize with error details.
+        
+        Args:
+            namespace: Repository namespace/owner.
+            repo: Repository name.
+            tag_name: Tag name that failed.
+            error: Error message describing the failure.
+        """
+        self.namespace = namespace
+        self.repo = repo
+        self.tag_name = tag_name
+        self.error = error
+        super().__init__()

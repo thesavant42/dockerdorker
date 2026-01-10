@@ -102,3 +102,29 @@ def fetch_tag_images(namespace: str, repo: str, tag_name: str) -> List[Dict]:
             db.save_image_config(repository_id, tag_name, image)
     
     return images_list
+
+
+def get_image_layers_for_peek(namespace: str, repo: str, tag_name: str) -> List[Dict]:
+    """Get layer digests from tag images, filtered for peek.
+    
+    Fetches image configs for a tag and extracts layers that have
+    actual content (digest and size > 0).
+    
+    Args:
+        namespace: Docker Hub namespace
+        repo: Repository name
+        tag_name: Tag name
+        
+    Returns:
+        List of layer dicts with digest, size, and instruction fields
+    """
+    images = fetch_tag_images(namespace, repo, tag_name)
+    if not images:
+        return []
+    
+    # Pick first image (usually amd64/linux)
+    image = images[0]
+    layers = image.get("layers", [])
+    
+    # Filter to layers with digests (actual content layers)
+    return [l for l in layers if l.get("digest") and l.get("size", 0) > 0]

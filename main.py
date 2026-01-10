@@ -25,6 +25,8 @@ from app.ui.messages import (
     EnumerateTagsRequested,
     FetchImageConfigComplete,
     FetchImageConfigError,
+    LayerPeekComplete,
+    LayerPeekError,
     RowHighlighted,
     SearchComplete,
     SearchError,
@@ -241,6 +243,68 @@ class DockerDorkerApp(App):
         summary = parse_image_config(message.image_data, build_history=message.build_history)
         build_info = self.query_one("#build-info", BuildInfoWidget)
         build_info.load_config(summary)
+        
+        # Trigger layer peek for filesystem enumeration
+        self._run_layer_peek(message.namespace, message.repo, message.tag_name)
+
+    @work(exclusive=True, thread=True)
+    def _run_layer_peek(self, namespace: str, repo: str, tag_name: str) -> None:
+        """Peek all layers for filesystem enumeration in background thread."""
+        from app.core.api.layerslayer import layerslayer
+        from app.core.database import get_database
+        from app.modules.enumerate.list_dockerhub_container_files import (
+            fetch_pull_token,
+            fetch_manifest,
+        )
+        
+        try:
+            # Get auth token for registry
+            token = fetch_pull_token(namespace, repo)
+            if not token:
+                self.call_from_thread(
+                    self.post_message,
+                    LayerPeekError(namespace, repo, tag_name, "Failed to get registry token"),
+                )
+                return
+            
+            # Get layers from Registry manifest
+            layer_infos = fetch_manifest(namespace, repo, tag_name, token)
+            if not layer_infos:
+                self.call_from_thread(
+                    self.post_message,
+                    LayerPeekError(namespace, repo, tag_name, "No layers found in manifest"),
+                )
+                return
+            
+            # Convert LayerInfo objects to dicts for layerslayer()
+            layers = [{"digest": l.digest, "size": l.size} for l in layer_infos]
+            
+            # Peek all layers via registry
+            db = get_database()
+            result = layerslayer(namespace, repo, layers, db=db)
+            
+            self.call_from_thread(
+                self.post_message,
+                LayerPeekComplete(namespace, repo, tag_name, result),
+            )
+        except Exception as e:
+            self.call_from_thread(
+                self.post_message,
+                LayerPeekError(namespace, repo, tag_name, str(e)),
+            )
+
+    def on_layer_peek_complete(self, message: LayerPeekComplete) -> None:
+        """Handle layer peek completion."""
+        result = message.result
+        self._set_status(
+            f"Found {result.total_entries} files across {result.layers_peeked} layers "
+            f"({result.layers_from_cache} cached)"
+        )
+        # TODO: Display result.all_entries in Files tab
+
+    def on_layer_peek_error(self, message: LayerPeekError) -> None:
+        """Handle layer peek error."""
+        self._set_status(f"Layer peek failed: {message.error}")
 
     def on_fetch_image_config_error(self, message: FetchImageConfigError) -> None:
         """Handle image config fetch error."""
