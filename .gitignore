@@ -4,6 +4,7 @@
 **/*.tar.gz
 **/*.tgz
 /app/data/
+downloads/*
 
 # py
 **/*.pyc
@@ -28,3 +29,4 @@ token_pull.txt
 /app/__pycache__
 **/__pycache__/*
 /docs/legacy-do-not-review
+/docs/success

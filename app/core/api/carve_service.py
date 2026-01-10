@@ -1,35 +1,19 @@
 """
-Carve a single file from an OCI image layer using incremental streaming.
+Carve service for extracting files from OCI image layers.
 
-This script extracts a specific file from a Docker image without downloading
-the entire layer. It uses HTTP Range requests to fetch compressed data in
-chunks, decompresses incrementally, and stops as soon as the target file
-is fully extracted.
-
-Usage:
-    python experiments/carve-file-from-layer.py ubuntu:24.04 /etc/passwd
-    python experiments/carve-file-from-layer.py nginx:alpine /etc/nginx/nginx.conf
-    python experiments/carve-file-from-layer.py aciliadevops/disney-local-web:latest /etc/passwd
-
-Based on the streaming approach proven in experiments/success/streampartial/test_partial_tar.py
+Provides a reusable carve_file() function that extracts specific files
+from Docker image layers using HTTP Range requests for efficiency.
 """
 
-import argparse
-import os
-import sys
 import time
 import zlib
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import requests
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.api.layerslayer.parser import TarEntry, parse_tar_header
+from app.core.utils.tar_parser import TarEntry, parse_tar_header
 
 
 # =============================================================================
@@ -37,7 +21,25 @@ from src.api.layerslayer.parser import TarEntry, parse_tar_header
 # =============================================================================
 
 DEFAULT_CHUNK_SIZE = 65536  # 64KB chunks
-DEFAULT_OUTPUT_DIR = "."
+DOWNLOADS_DIR = Path("./downloads")
+
+
+# =============================================================================
+# Result Types
+# =============================================================================
+
+@dataclass
+class CarveResult:
+    """Result of a carve operation."""
+    success: bool
+    saved_path: Optional[str] = None
+    error: Optional[str] = None
+    bytes_downloaded: int = 0
+    layer_size: int = 0
+    elapsed_seconds: float = 0.0
+
+
+ProgressCallback = Callable[[str], None]
 
 
 # =============================================================================
@@ -51,7 +53,7 @@ _session.headers.update({
 })
 
 
-def fetch_pull_token(namespace: str, repo: str) -> Optional[str]:
+def _fetch_pull_token(namespace: str, repo: str) -> Optional[str]:
     """Retrieve a Docker Hub pull token (anonymous)."""
     auth_url = (
         f"https://auth.docker.io/token"
@@ -61,18 +63,17 @@ def fetch_pull_token(namespace: str, repo: str) -> Optional[str]:
         resp = requests.get(auth_url, timeout=10)
         resp.raise_for_status()
         return resp.json().get("token")
-    except requests.RequestException as e:
-        print(f"Error fetching auth token: {e}")
+    except requests.RequestException:
         return None
 
 
-def registry_base_url(namespace: str, repo: str) -> str:
+def _registry_base_url(namespace: str, repo: str) -> str:
     """Get the registry base URL for a repository."""
     return f"https://registry-1.docker.io/v2/{namespace}/{repo}"
 
 
 # =============================================================================
-# Manifest Fetching
+# Layer and Blob Classes
 # =============================================================================
 
 @dataclass
@@ -83,21 +84,20 @@ class LayerInfo:
     media_type: str
 
 
-def fetch_manifest(namespace: str, repo: str, tag: str, token: str) -> list[LayerInfo]:
+def _fetch_manifest(namespace: str, repo: str, tag: str, token: str) -> list[LayerInfo]:
     """
     Fetch image manifest and extract layer information.
     
     Returns list of LayerInfo in order (base layer first).
     """
-    url = f"{registry_base_url(namespace, repo)}/manifests/{tag}"
+    url = f"{_registry_base_url(namespace, repo)}/manifests/{tag}"
     headers = {"Authorization": f"Bearer {token}"}
     
     try:
         resp = _session.get(url, headers=headers, timeout=30)
         resp.raise_for_status()
         manifest = resp.json()
-    except requests.RequestException as e:
-        print(f"Error fetching manifest: {e}")
+    except requests.RequestException:
         return []
     
     # Handle manifest list (multi-arch) - pick first amd64/linux
@@ -117,7 +117,7 @@ def fetch_manifest(namespace: str, repo: str, tag: str, token: str) -> list[Laye
         if target:
             # Fetch the actual manifest
             digest = target.get("digest")
-            url = f"{registry_base_url(namespace, repo)}/manifests/{digest}"
+            url = f"{_registry_base_url(namespace, repo)}/manifests/{digest}"
             resp = _session.get(url, headers=headers, timeout=30)
             resp.raise_for_status()
             manifest = resp.json()
@@ -134,16 +134,12 @@ def fetch_manifest(namespace: str, repo: str, tag: str, token: str) -> list[Laye
     return layers
 
 
-# =============================================================================
-# Incremental Blob Reader
-# =============================================================================
-
 class IncrementalBlobReader:
     """Fetches blob data in chunks using HTTP Range requests."""
     
     def __init__(self, namespace: str, repo: str, digest: str, token: str, 
                  chunk_size: int = DEFAULT_CHUNK_SIZE):
-        self.url = f"{registry_base_url(namespace, repo)}/blobs/{digest}"
+        self.url = f"{_registry_base_url(namespace, repo)}/blobs/{digest}"
         self.token = token
         self.chunk_size = chunk_size
         self.current_offset = 0
@@ -193,15 +189,10 @@ class IncrementalBlobReader:
             
             return data
             
-        except requests.RequestException as e:
-            print(f"Error fetching chunk: {e}")
+        except requests.RequestException:
             self.exhausted = True
             return b""
 
-
-# =============================================================================
-# Incremental Gzip Decompressor
-# =============================================================================
 
 class IncrementalGzipDecompressor:
     """Decompresses gzip data incrementally."""
@@ -211,7 +202,7 @@ class IncrementalGzipDecompressor:
         self.decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
         self.buffer = b""
         self.bytes_decompressed = 0
-        self.error = None
+        self.error: Optional[str] = None
     
     def feed(self, compressed_data: bytes) -> bytes:
         """
@@ -234,10 +225,6 @@ class IncrementalGzipDecompressor:
         """Return the full decompressed buffer."""
         return self.buffer
 
-
-# =============================================================================
-# Tar Scanner
-# =============================================================================
 
 @dataclass
 class ScanResult:
@@ -307,22 +294,18 @@ class TarScanner:
             found=False,
             entries_scanned=self.entries_scanned,
         )
-    
-    def needs_more_data(self, buffer_size: int) -> bool:
-        """Check if we need more data to continue scanning."""
-        return self.current_offset + 512 > buffer_size
 
 
 # =============================================================================
 # File Extraction and Saving
 # =============================================================================
 
-def extract_and_save(
+def _extract_and_save(
     data: bytes,
     content_offset: int,
     content_size: int,
     target_path: str,
-    output_dir: str
+    output_dir: Path
 ) -> str:
     """
     Extract file content from buffer and save to disk.
@@ -335,7 +318,7 @@ def extract_and_save(
     # Prepare output path
     # Remove leading slash from target path
     clean_path = target_path.lstrip("/")
-    output_path = Path(output_dir) / clean_path
+    output_path = output_dir / clean_path
     
     # Create parent directories
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -347,7 +330,7 @@ def extract_and_save(
 
 
 # =============================================================================
-# Main Carving Logic
+# Main Carve Function
 # =============================================================================
 
 def carve_file(
@@ -355,39 +338,55 @@ def carve_file(
     repo: str,
     tag: str,
     target_path: str,
-    output_dir: str = DEFAULT_OUTPUT_DIR,
+    progress: Optional[ProgressCallback] = None,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
-    verbose: bool = True
-) -> Optional[str]:
+) -> CarveResult:
     """
     Carve a single file from an image layer.
     
-    Returns the path where file was saved, or None if not found.
+    Args:
+        namespace: Docker Hub namespace (e.g., 'drichnerdisney').
+        repo: Repository name (e.g., 'ollama').
+        tag: Image tag (e.g., 'v1').
+        target_path: Path to file inside container (e.g., '/etc/passwd').
+        progress: Optional callback for status updates.
+        chunk_size: Size of chunks to fetch.
+        
+    Returns:
+        CarveResult with success status and saved_path or error.
     """
     start_time = time.time()
     
-    # Step 1: Authenticate
-    print(f"Fetching manifest for {namespace}/{repo}:{tag}...")
-    token = fetch_pull_token(namespace, repo)
+    def _progress(msg: str) -> None:
+        if progress:
+            progress(msg)
+    
+    # Build output directory: ./downloads/<namespace>/<repo>/<tag>/
+    output_dir = DOWNLOADS_DIR / namespace / repo / tag
+    
+    _progress(f"Authenticating for {namespace}/{repo}...")
+    token = _fetch_pull_token(namespace, repo)
     if not token:
-        print("Failed to get authentication token")
-        return None
+        return CarveResult(
+            success=False, 
+            error="Failed to get authentication token",
+            elapsed_seconds=time.time() - start_time,
+        )
     
-    # Step 2: Get manifest and layers
-    layers = fetch_manifest(namespace, repo, tag, token)
+    _progress(f"Fetching manifest for {namespace}/{repo}:{tag}...")
+    layers = _fetch_manifest(namespace, repo, tag, token)
     if not layers:
-        print("No layers found in manifest")
-        return None
+        return CarveResult(
+            success=False, 
+            error="No layers found in manifest",
+            elapsed_seconds=time.time() - start_time,
+        )
     
-    print(f"Found {len(layers)} layer(s). Searching for {target_path}...")
+    _progress(f"Scanning {len(layers)} layer(s) for {target_path}...")
     
-    # Step 3: Scan each layer
+    # Scan each layer
     for i, layer in enumerate(layers):
-        if verbose:
-            print(f"\nScanning layer {i+1}/{len(layers)}: {layer.digest[:20]}...")
-            print(f"  Layer size: {layer.size:,} bytes")
-        else:
-            print(f"Scanning layer {i+1}/{len(layers)}: {layer.digest[:20]}...")
+        _progress(f"Scanning layer {i+1}/{len(layers)}: {layer.digest[:20]}...")
         
         # Initialize components
         reader = IncrementalBlobReader(namespace, repo, layer.digest, token, chunk_size)
@@ -407,24 +406,17 @@ def carve_file(
             # Check gzip magic on first chunk
             if chunks_fetched == 1:
                 if len(compressed) < 2 or compressed[0:2] != b'\x1f\x8b':
-                    print(f"  Layer is not gzip compressed, skipping")
+                    # Layer is not gzip compressed, skip
                     break
             
             # Decompress
             decompressor.feed(compressed)
             
             if decompressor.error:
-                if verbose:
-                    print(f"  Decompression error: {decompressor.error}")
                 break
             
             # Scan for target
             result = scanner.scan(decompressor.get_buffer())
-            
-            if verbose:
-                print(f"  Downloaded: {reader.bytes_downloaded:,}B -> "
-                      f"Decompressed: {decompressor.bytes_decompressed:,}B -> "
-                      f"Entries: {scanner.entries_scanned}")
             
             if result.found:
                 # Check if we have enough data for the file content
@@ -438,18 +430,15 @@ def carve_file(
                         break
                     decompressor.feed(compressed)
                     buffer = decompressor.get_buffer()
-                    if verbose:
-                        print(f"  Fetching more for file content... "
-                              f"Have {len(buffer):,} / need {bytes_needed:,}")
+                    _progress(f"Fetching file content... {len(buffer):,} / {bytes_needed:,} bytes")
                 
                 buffer = decompressor.get_buffer()
                 if len(buffer) >= bytes_needed:
                     # Found and have full content!
-                    print(f"  FOUND: {target_path} ({result.content_size:,} bytes) "
-                          f"at entry #{result.entries_scanned}")
+                    _progress(f"Found {target_path} ({result.content_size:,} bytes)")
                     
                     # Extract and save
-                    saved_path = extract_and_save(
+                    saved_path = _extract_and_save(
                         buffer,
                         result.content_offset,
                         result.content_size,
@@ -458,110 +447,26 @@ def carve_file(
                     )
                     
                     elapsed = time.time() - start_time
-                    efficiency = (reader.bytes_downloaded / layer.size * 100) if layer.size else 0
                     
-                    print(f"\nDone! File saved to: {saved_path}")
-                    print(f"Stats: Downloaded {reader.bytes_downloaded:,} bytes "
-                          f"of {layer.size:,} byte layer ({efficiency:.1f}%) "
-                          f"in {elapsed:.2f}s")
-                    
-                    return saved_path
+                    return CarveResult(
+                        success=True,
+                        saved_path=saved_path,
+                        bytes_downloaded=reader.bytes_downloaded,
+                        layer_size=layer.size,
+                        elapsed_seconds=elapsed,
+                    )
                 else:
-                    print(f"  ERROR: Found file but couldn't get full content")
-                    print(f"    Have {len(buffer):,} bytes, need {bytes_needed:,}")
+                    return CarveResult(
+                        success=False,
+                        error=f"Found file but couldn't get full content (have {len(buffer):,}, need {bytes_needed:,})",
+                        bytes_downloaded=reader.bytes_downloaded,
+                        layer_size=layer.size,
+                        elapsed_seconds=time.time() - start_time,
+                    )
     
     elapsed = time.time() - start_time
-    print(f"\nFile not found: {target_path} (searched {len(layers)} layers in {elapsed:.2f}s)")
-    return None
-
-
-# =============================================================================
-# CLI Entry Point
-# =============================================================================
-
-def parse_image_ref(image_ref: str) -> tuple[str, str, str]:
-    """
-    Parse image reference into namespace, repo, and tag.
-    
-    Examples:
-        "nginx" -> ("library", "nginx", "latest")
-        "nginx:alpine" -> ("library", "nginx", "alpine")
-        "library/ubuntu:24.04" -> ("library", "ubuntu", "24.04")
-        "aciliadevops/disney-local-web:latest" -> ("aciliadevops", "disney-local-web", "latest")
-    """
-    # Split off tag first
-    if ":" in image_ref:
-        image_part, tag = image_ref.rsplit(":", 1)
-    else:
-        image_part = image_ref
-        tag = "latest"
-    
-    # Then split namespace/repo
-    if "/" in image_part:
-        parts = image_part.split("/", 1)
-        return parts[0], parts[1], tag
-    else:
-        # Official images are under "library" namespace
-        return "library", image_part, tag
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Extract a single file from a Docker image layer",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python carve-file-from-layer.py ubuntu:24.04 /etc/passwd
-  python carve-file-from-layer.py nginx:alpine /etc/nginx/nginx.conf
-  python carve-file-from-layer.py alpine:edge /etc/os-release
-  python carve-file-from-layer.py aciliadevops/disney-local-web:latest /etc/passwd
-  python carve-file-from-layer.py alpine /etc/os-release  # defaults to :latest
-        """
+    return CarveResult(
+        success=False,
+        error=f"File not found: {target_path} (searched {len(layers)} layers)",
+        elapsed_seconds=elapsed,
     )
-    
-    parser.add_argument(
-        "image",
-        help="Docker image reference (e.g., 'ubuntu:24.04', 'nginx:alpine', 'user/repo:tag')"
-    )
-    parser.add_argument(
-        "filepath",
-        help="Target file path in container (e.g., '/etc/passwd')"
-    )
-    parser.add_argument(
-        "--output-dir", "-o",
-        default=DEFAULT_OUTPUT_DIR,
-        help=f"Output directory (default: {DEFAULT_OUTPUT_DIR})"
-    )
-    parser.add_argument(
-        "--chunk-size", "-c",
-        type=int,
-        default=DEFAULT_CHUNK_SIZE // 1024,
-        help=f"Fetch chunk size in KB (default: {DEFAULT_CHUNK_SIZE // 1024})"
-    )
-    parser.add_argument(
-        "--quiet", "-q",
-        action="store_true",
-        help="Suppress detailed progress output"
-    )
-    
-    args = parser.parse_args()
-    
-    # Parse image reference
-    namespace, repo, tag = parse_image_ref(args.image)
-    
-    # Run carve
-    result = carve_file(
-        namespace=namespace,
-        repo=repo,
-        tag=tag,
-        target_path=args.filepath,
-        output_dir=args.output_dir,
-        chunk_size=args.chunk_size * 1024,
-        verbose=not args.quiet,
-    )
-    
-    sys.exit(0 if result else 1)
-
-
-if __name__ == "__main__":
-    main()

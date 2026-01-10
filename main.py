@@ -17,21 +17,29 @@ from textual.widgets import DataTable, Footer, Header
 from app.core.api.dockerhub_search import search as dockerhub_search
 from app.core.api.dockerhub_v2_api import fetch_all_tags
 from app.core.utils.image_config_formatter import parse_image_config
-from app.ui.commands.search_provider import SearchProvider
+from app.ui.commands.ddork_provider import DdorkProvider
 from app.ui.messages import (
     BuildHistoryFetched,
+    CarveComplete,
+    CarveError,
+    CarveRequested,
+    ContainersRequested,
     EnumerateTagsComplete,
     EnumerateTagsError,
     EnumerateTagsRequested,
     FetchImageConfigComplete,
     FetchImageConfigError,
+    FilesRequested,
     LayerPeekComplete,
     LayerPeekError,
+    LayersRequested,
+    ReposRequested,
     RowHighlighted,
     SearchComplete,
     SearchError,
     SearchRequested,
     TagSelected,
+    TagsRequested,
 )
 from app.ui.panels import LeftPanel, RightPanel, TopPanel
 from app.ui.widgets.build_info import BuildInfoWidget
@@ -47,7 +55,7 @@ class DockerDorkerApp(App):
     TITLE = "dockerDorker"
     SUB_TITLE = "by @thesavant42"
 
-    COMMANDS = App.COMMANDS | {SearchProvider}
+    COMMANDS = App.COMMANDS | {DdorkProvider}
 
     def compose(self) -> ComposeResult:
         """Compose the UI layout."""
@@ -310,6 +318,177 @@ class DockerDorkerApp(App):
         """Handle image config fetch error."""
         self._set_status(
             f"Image config fetch failed: {message.error}"
+        )
+
+    # --- /ddork command palette handlers ---
+
+    def on_repos_requested(self, message: ReposRequested) -> None:
+        """Handle /ddork repos command - search for namespace."""
+        # Reuse search to find repos for this namespace
+        self._set_status(f"Searching repos for namespace '{message.namespace}'...")
+        self._run_search(message.namespace)
+
+    def on_tags_requested(self, message: TagsRequested) -> None:
+        """Handle /ddork tags command."""
+        self._set_status(f"Enumerating tags for {message.namespace}/{message.repo}...")
+        self._enumerate_tags(message.namespace, message.repo)
+
+    def on_containers_requested(self, message: ContainersRequested) -> None:
+        """Handle /ddork containers command - fetch container digests for a tag."""
+        self._set_status(f"Fetching containers for {message.namespace}/{message.repo}:{message.tag}...")
+        self._fetch_containers(message.namespace, message.repo, message.tag)
+
+    @work(exclusive=True, thread=True)
+    def _fetch_containers(self, namespace: str, repo: str, tag: str) -> None:
+        """Fetch container digests for a tag in background thread."""
+        from app.core.api.dockerhub_v2_api import fetch_tag_images
+        try:
+            response = fetch_tag_images(namespace, repo, tag)
+            if isinstance(response, dict):
+                images = response.get("results", response.get("images", []))
+            else:
+                images = response if isinstance(response, list) else []
+            
+            # Log the container digests to status
+            count = len(images)
+            digests = [img.get("digest", "N/A")[:16] for img in images[:5]]
+            digest_str = ", ".join(digests)
+            if count > 5:
+                digest_str += f", ... (+{count - 5} more)"
+            
+            self.call_from_thread(
+                self._set_status,
+                f"Found {count} container(s): {digest_str}"
+            )
+        except Exception as e:
+            self.call_from_thread(
+                self._set_status,
+                f"Containers fetch failed: {e}"
+            )
+
+    def on_layers_requested(self, message: LayersRequested) -> None:
+        """Handle /ddork layers command - get layer digests from registry."""
+        self._set_status(f"Fetching layers for {message.namespace}/{message.repo}:{message.tag}...")
+        self._fetch_layers(message.namespace, message.repo, message.tag)
+
+    @work(exclusive=True, thread=True)
+    def _fetch_layers(self, namespace: str, repo: str, tag: str) -> None:
+        """Fetch layer digests from registry in background thread."""
+        from app.modules.enumerate.list_dockerhub_container_files import (
+            fetch_pull_token,
+            fetch_manifest,
+        )
+        try:
+            token = fetch_pull_token(namespace, repo)
+            if not token:
+                self.call_from_thread(
+                    self._set_status,
+                    "Failed to get registry token"
+                )
+                return
+            
+            layer_infos = fetch_manifest(namespace, repo, tag, token)
+            if not layer_infos:
+                self.call_from_thread(
+                    self._set_status,
+                    "No layers found in manifest"
+                )
+                return
+            
+            count = len(layer_infos)
+            total_size = sum(l.size for l in layer_infos)
+            size_mb = total_size / (1024 * 1024)
+            
+            self.call_from_thread(
+                self._set_status,
+                f"Found {count} layer(s), total size: {size_mb:.1f} MB"
+            )
+        except Exception as e:
+            self.call_from_thread(
+                self._set_status,
+                f"Layers fetch failed: {e}"
+            )
+
+    def on_files_requested(self, message: FilesRequested) -> None:
+        """Handle /ddork files command - run layer peek."""
+        self._set_status(f"Peeking layers for {message.namespace}/{message.repo}:{message.tag}...")
+        self._run_layer_peek(message.namespace, message.repo, message.tag)
+
+    def on_carve_requested(self, message: CarveRequested) -> None:
+        """Handle file carve request from command palette."""
+        self._set_status(
+            f"Carving {message.filepath} from {message.namespace}/{message.repo}:{message.tag}..."
+        )
+        self._run_carve(message.namespace, message.repo, message.tag, message.filepath)
+
+    @work(exclusive=True, thread=True)
+    def _run_carve(self, namespace: str, repo: str, tag: str, filepath: str) -> None:
+        """Run the carve operation in a background thread."""
+        from app.core.api.carve_service import carve_file
+        
+        def progress_callback(msg: str) -> None:
+            self.call_from_thread(self._set_status, msg)
+        
+        try:
+            result = carve_file(
+                namespace=namespace,
+                repo=repo,
+                tag=tag,
+                target_path=filepath,
+                progress=progress_callback,
+            )
+            
+            if result.success:
+                self.call_from_thread(
+                    self.post_message,
+                    CarveComplete(
+                        namespace=namespace,
+                        repo=repo,
+                        tag=tag,
+                        filepath=filepath,
+                        saved_path=result.saved_path,
+                    ),
+                )
+            else:
+                self.call_from_thread(
+                    self.post_message,
+                    CarveError(
+                        namespace=namespace,
+                        repo=repo,
+                        tag=tag,
+                        filepath=filepath,
+                        error=result.error or "Unknown error",
+                    ),
+                )
+        except Exception as e:
+            self.call_from_thread(
+                self.post_message,
+                CarveError(
+                    namespace=namespace,
+                    repo=repo,
+                    tag=tag,
+                    filepath=filepath,
+                    error=str(e),
+                ),
+            )
+
+    def on_carve_complete(self, message: CarveComplete) -> None:
+        """Handle successful carve completion."""
+        self._set_status(f"Saved: {message.saved_path}")
+        self.notify(
+            f"File saved to {message.saved_path}",
+            title="Carve Complete",
+            timeout=5,
+        )
+
+    def on_carve_error(self, message: CarveError) -> None:
+        """Handle carve failure."""
+        self._set_status(f"Carve failed: {message.error}")
+        self.notify(
+            f"Failed to carve {message.filepath}: {message.error}",
+            title="Carve Error",
+            severity="error",
+            timeout=5,
         )
 
 

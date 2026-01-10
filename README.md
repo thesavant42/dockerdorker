@@ -4,11 +4,15 @@ With dockerdorker you can quickly and efficiently search docker hub, investigate
 
 ## How it works:
 
- - By exploiting the tar.gzip file format's structure it is possible to extract a virtual "filesystem" structure without needing to download more than a few bytes of the file. This process can be repeated per layer, returning the simulated layout of the entire overlay filesystem as a text blob. 
+ - By *exploiting* the tar.gzip file format's structure it is possible to extract the file/directory structure without needing to download more than a few bytes of the file.
+ 
+ - This process can be repeated per layer, returning the simulated layout of the entire overlay filesystem as a text blob. 
 
 - A review of the available files can help the user determine if its worth downloading any part of the container image, and the user can download individual files from a layer's tar.gz file.
 
-The flow described below is the ideal state.
+Where the box is checked, the features have been implemented. 
+
+For the remainder, the flow described below is the *ideal* state.
 
 ---
 
@@ -42,31 +46,31 @@ Alternatively:
         ```json
         {"user":"ebusinessdocker","name":"disney","namespace":"ebusinessdocker","repository_type":"image","status":1,"status_description":"active","description":"","is_private":false,"is_automated":false,"star_count":0,"pull_count":275,"last_updated":"2017-11-02T07:47:35.758489Z","last_modified":"2024-10-16T13:48:34.145251Z","date_registered":"2017-04-25T09:11:17.568035Z","collaborator_count":0,"affiliation":null,"hub_user":"ebusinessdocker","has_starred":false,"permissions":{"read":true,"write":false,"admin":false},"media_types":["application/vnd.docker.container.image.v1+json"],"content_types":["image"],"categories":[],"immutable_tags_settings":{"enabled":false,"rules":[".*"]},"storage_size":1007407794,"source":null}
         ```
+ - [x] Enumerate ALL image layer digests for a container
+    - **Must be done AT THE CONTAINER REGISTRY!**
+    - `app/modules/enumerate/list_dockerhub_container_files.py` has examples on handling auth to the registry   (line 32:60)
+    - Each Tag can have many container architectures associated
+        - with a unique digest for each layer
+ - [x] Extract Build Details from Registry Image Config file (ENV, ENTRYPOINT, AUTHOR, WORKINGDIR) are all some of the fields we want to highlight
 
 --- 
 
 ### WE ARE HERE
 
- - [ ] Enumerate ALL image layer digests for a container
-    - **Must be done AT THE CONTAINER REGISTRY!**
-    - `app/modules/enumerate/list_dockerhub_container_files.py` has examples on handling auth to the registry   (line 32:60)
-    - Each Tag can have many container architectures associated
-        - with a unique digest for each layer
- - [ ] Extract Build Details from Registry Image Config file (ENV, ENTRYPOINT, AUTHOR, WORKINGDIR) are all some of the fields we want to highlight
- - [ ] For each layer of an image container, run a "layer-peek" using the layer slayer lib to stream the file contents with the secret gzip hacks.
+ - [ ] For each layer digest of an image container, run a "layer-peek", using the layerslayer api to stream the file contents, with the (not actually secret but still very cool) gzip hacks.
+    
     - [ ] [Peek](@docs\README-enumerate.md) each image layer until you have gathered the filesystem layout / paths for all layers.
+    
     - [ ] [Carve](docs\README-carve-file.md) the file out of the SOCI layer image
+
         - `python experiments/carve-file-from-layer.py "aciliadevops/disney-local-web:latest" /etc/passwd`
-        
         ```bash
         Fetching manifest for aciliadevops/disney-local-web:latest...
         Found 7 layer(s). Searching for /etc/passwd...
-
         Scanning layer 1/7: sha256:20043066d3d5c...
         Layer size: 29,724,688 bytes
         Downloaded: 65,536B -> Decompressed: 300,732B -> Entries: 111
         FOUND: /etc/passwd (888 bytes) at entry #111
-
         Done! File saved to: /etc/passwd
         Stats: Downloaded 65,536 bytes of 29,724,688 byte layer (0.2%) in 1.14s
 
@@ -78,16 +82,10 @@ Alternatively:
         sync:x:4:65534:sync:/bin:/bin/sync
         [...]
         ```
-        - Standalone Examples
+        - The above documents reference standalone scripts, 
             - These are meant to be used as stand alone methods to verify functionality without the full modular framework.
-            **Do not delete or modify these files.**
-
-
-
-
-
-
-
+            - **Do not delete or modify these files.**
+        --let's get it tested nd confirmed working as part of the native docker dorker api
 
 ---
 
@@ -96,13 +94,3 @@ Alternatively:
 Please review the [Code Standards](STYLES.MD) before writing any code.
 
 ---
-
-### Prior Art / More Info
-
-This technique is leveraged heavily by several projects:
- - dagdotdev https://github.com/jonjohnsonjr/dagdotdev (the real mvp)
- - layerslayer https://github.com/thesavant42/layerslayer
-    - This project (docker-dorker) looks to integrate the lessons learned from layerslayer, and add caching, searching, navigation, and reporting.
- - yolosint https://github.com/thesavant42/yolosint
- - targz https://github.com/jonjohnsonjr/targz
-  - golang utilities for working with tar.gz bundles.

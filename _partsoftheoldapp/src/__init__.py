@@ -1,1 +1,0 @@
-"""Docker-dorker package module."""
