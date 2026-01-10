@@ -1,6 +1,8 @@
 # Simulated Terminal textular terminal
 I Would like the file system listings from the program to simlate a fixed width wide terminal `ls` output
 
+### NOT YET READY FOR IMPLEMENTATION
+
 **Note: Textual_Terminal is not supported in Windows so I can't use that.**
 
 - app\modules\enumerate\list_dockerhub_container_files.py

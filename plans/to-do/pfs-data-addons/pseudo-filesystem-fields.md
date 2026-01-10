@@ -1,6 +1,8 @@
 # Pseudo-Filesystem 
 
-## File System contents Table Legend:
+## NOT YET READY FOR IMPLEMENTATION
+
+### File System contents Table Legend:
 
 Each [`TarEntry`](src/api/layerslayer/parser.py:17) field corresponds to tar archive header data:
 

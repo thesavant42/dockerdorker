@@ -10,6 +10,8 @@ Usage:
     python app/modules/carve/carve-file-from-layer.py "aciliadevops/disney-local-web:latest" /etc/passwd
 """
 
+### DO NOT USE THIS IN PRODUCTION
+
 import argparse
 import os
 import sys

@@ -169,6 +169,6 @@ from app.core.utils.tar_parser import TarEntry, parse_tar_header
 
 ## Notes
 
-- Original `app/modules/carve/src/` is kept for reference but should be removed after full verification
+
 - The `app/data/` directory is for runtime data; contents are gitignored (only `.gitkeep` is committed)
 - All modules support standalone CLI execution for testing

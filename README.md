@@ -4,9 +4,9 @@ With dockerdorker you can quickly and efficiently search docker hub, investigate
 
 ## How it works:
 
- - By *exploiting* the tar.gzip file format's structure it is possible to extract the file/directory structure without needing to download more than a few bytes of the file.
+- By *exploiting* the tar.gzip file format's structure it is possible to extract the file/directory structure without needing to download more than a few bytes of the file.
  
- - This process can be repeated per layer, returning the simulated layout of the entire overlay filesystem as a text blob. 
+- This process can be repeated per layer, returning the simulated layout of the entire overlay filesystem as a text blob. 
 
 - A review of the available files can help the user determine if its worth downloading any part of the container image, and the user can download individual files from a layer's tar.gz file.
 
@@ -34,7 +34,7 @@ Alternatively:
         ```json
         {"count":1,"next":null,"previous":null,"results":[{"creator":613503,"id":10278613,"images":[{"architecture":"amd64","features":"","variant":null,"digest":"sha256:46a577b81ad2ad37b99d7a809ccd21c135cbca3c6ab3b49cfcf705c54312de78","os":"linux","os_features":"","os_version":null,"size":25529703,"status":"active","last_pulled":"2026-01-09T19:20:49.733138382Z","last_pushed":"2017-11-02T07:47:36Z"}],"last_updated":"2017-11-02T07:47:35.374523Z","last_updater":613503,"last_updater_username":"ebusinessdocker","name":"latest","repository":1436233,"full_size":25529703,"v2":true,"tag_status":"active","tag_last_pulled":"2026-01-09T19:20:49.733138382Z","tag_last_pushed":"2017-11-02T07:47:35.374523Z","media_type":"application/vnd.docker.container.image.v1+json","content_type":"image"}]}
         ```
-- [ ] Enumerate ALL images PER TAG:
+- [x] Enumerate ALL images PER TAG:
     - `GET /v2/repositories/<OWNER>/REPOSITORY/tags/TAG/images`
         - returns Container Digests 
         ```json
@@ -46,18 +46,17 @@ Alternatively:
         ```json
         {"user":"ebusinessdocker","name":"disney","namespace":"ebusinessdocker","repository_type":"image","status":1,"status_description":"active","description":"","is_private":false,"is_automated":false,"star_count":0,"pull_count":275,"last_updated":"2017-11-02T07:47:35.758489Z","last_modified":"2024-10-16T13:48:34.145251Z","date_registered":"2017-04-25T09:11:17.568035Z","collaborator_count":0,"affiliation":null,"hub_user":"ebusinessdocker","has_starred":false,"permissions":{"read":true,"write":false,"admin":false},"media_types":["application/vnd.docker.container.image.v1+json"],"content_types":["image"],"categories":[],"immutable_tags_settings":{"enabled":false,"rules":[".*"]},"storage_size":1007407794,"source":null}
         ```
- - [x] Enumerate ALL image layer digests for a container
+- [x] Enumerate ALL image layer digests for a container
     - **Must be done AT THE CONTAINER REGISTRY!**
     - `app/modules/enumerate/list_dockerhub_container_files.py` has examples on handling auth to the registry   (line 32:60)
     - Each Tag can have many container architectures associated
         - with a unique digest for each layer
- - [x] Extract Build Details from Registry Image Config file (ENV, ENTRYPOINT, AUTHOR, WORKINGDIR) are all some of the fields we want to highlight
-
+- [x] Extract Build Details from Registry Image Config file (ENV, ENTRYPOINT, AUTHOR, WORKINGDIR) are all some of the fields we want to highlight
 --- 
 
 ### WE ARE HERE
 
- - [ ] For each layer digest of an image container, run a "layer-peek", using the layerslayer api to stream the file contents, with the (not actually secret but still very cool) gzip hacks.
+- [ ] For each layer digest of an image container, run a "layer-peek", using the layerslayer api to stream the file contents, with the (not actually secret but still very cool) gzip hacks.
     
     - [ ] [Peek](@docs\README-enumerate.md) each image layer until you have gathered the filesystem layout / paths for all layers.
     
