@@ -45,7 +45,7 @@ Alternatively:
 
 --- 
 
-
+### WE ARE HERE
 
  - [ ] Enumerate ALL image layer digests for a container
     - **Must be done AT THE CONTAINER REGISTRY!**
