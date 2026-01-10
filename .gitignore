@@ -27,3 +27,4 @@ token_pull.txt
 /app/core/__pycache__
 /app/__pycache__
 **/__pycache__/*
+/docs/legacy-do-not-review
