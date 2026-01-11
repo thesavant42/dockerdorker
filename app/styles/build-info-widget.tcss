@@ -3,7 +3,7 @@
 /* Build info scroll container - handles scrolling */
 #build-info-scroll {
     height: 1fr;
-    scrollbar-size: 4 4;
+    scrollbar-size: 2 2;
 }
 
 /* Build info widget - content with text wrapping */

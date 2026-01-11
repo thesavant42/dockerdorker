@@ -1,0 +1,8 @@
+/*
+*  TODO: Switch value: False by default
+*          animate: True
+*          tooltip: "Toggle HTTP Proxy"
+* - Toggle should update value and persist;
+* - Application should start with the proxy state and toggle switch persisting across restarts
+* 
+*/

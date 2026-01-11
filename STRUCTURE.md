@@ -1,5 +1,7 @@
 # dockerDorker Project Structure
 
+ **THIS DOCUMENT IS OBSOLETE! TODO: UPDATE!**
+
 This document describes the permanent directory structure for the dockerDorker project.
 
 ## Overview

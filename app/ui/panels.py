@@ -15,6 +15,10 @@ from app.ui.widgets.tag_selector import TagSelectorWidget
 class TopPanel(Static):
     """Top panel widget - contains result details and tag selector."""
 
+    def on_mount(self) -> None:
+        """Set border title on mount."""
+        self.border_title = "Result Details"
+
     def compose(self) -> ComposeResult:
         """Compose the top panel with result details and tag selector."""
         with Horizontal(id="top-panel-content"):

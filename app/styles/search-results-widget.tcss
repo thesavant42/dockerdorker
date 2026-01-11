@@ -3,7 +3,7 @@
 /* Search results DataTable - fills remaining left panel space */
 #search-results {
     height: 1fr;
-    scrollbar-size: 4 4;
+    scrollbar-size: 2 2;
 }
 
 /* Ensure table cells don't wrap and reduce padding */

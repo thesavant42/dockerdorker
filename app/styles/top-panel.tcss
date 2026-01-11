@@ -2,10 +2,13 @@
 
 /* Top panel - flows below header in vertical layout (not docked) */
 #top-panel {
-    height: 1fr;
+    height: auto;
+    min-height: 14;
+    max-height: 20;
     padding: 1 2;
     background: $surface;
     border: solid $primary;
+    border-title-color: $primary;
 }
 
 /* Top panel content - horizontal layout for details and tag selector */
