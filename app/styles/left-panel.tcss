@@ -1,1 +1,10 @@
-/* TBD */
+/* Left Panel Styles - Search results container */
+
+/* Left panel - 50% width, contains search results */
+#left-panel {
+    width: 1fr;
+    height: 100%;
+    padding: 0;
+    background: $surface;
+    border: solid $secondary;
+}

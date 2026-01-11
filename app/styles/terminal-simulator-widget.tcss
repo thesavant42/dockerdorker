@@ -1,1 +1,9 @@
-/* TBD */
+/* Terminal Simulator Widget Styles - Filesystem display */
+
+/* Filesystem placeholder */
+#filesystem-placeholder {
+    height: 1fr;
+    padding: 1;
+    text-align: center;
+    color: $text-muted;
+}

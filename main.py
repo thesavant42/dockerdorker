@@ -51,7 +51,15 @@ from app.ui.widgets.tag_selector import TagSelectorWidget
 class DockerDorkerApp(App):
     """dockerDorker - A Textual app for Docker Hub exploration."""
 
-    CSS_PATH = "app/styles/styles.tcss"
+    CSS_PATH = [
+        "app/styles/styles.tcss",
+        "app/styles/top-panel.tcss",
+        "app/styles/left-panel.tcss",
+        "app/styles/right-panel.tcss",
+        "app/styles/search-results-widget.tcss",
+        "app/styles/build-info-widget.tcss",
+        "app/styles/terminal-simulator-widget.tcss",
+    ]
     TITLE = "dockerDorker"
     SUB_TITLE = "by @thesavant42"
 

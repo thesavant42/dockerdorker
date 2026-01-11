@@ -1,125 +1,26 @@
-/* dockerDorker Stylesheet */
+/* dockerDorker Stylesheet - Core Layout */
+/*
+ * This file contains only core layout rules.
+ * Panel and widget styles are in separate files:
+ *   - top-panel.tcss
+ *   - left-panel.tcss
+ *   - right-panel.tcss
+ *   - search-results-widget.tcss
+ *   - build-info-widget.tcss
+ *   - terminal-simulator-widget.tcss
+ */
 
 /* Screen uses vertical layout by default - widgets stack top to bottom */
 
 /* Header styling - built-in widget with dock:top */
 /* No additional styling needed - Header has its own internal CSS */
 
-/* Top panel - flows below header in vertical layout (not docked) */
-#top-panel {
-    height: 1fr;
-    padding: 1 2;
-    background: $surface;
-    border: solid $primary;
-}
-
 /* Main content area - horizontal split for left/right panels */
 #main-content {
     height: 2fr;
 }
 
-/* Left panel - 50% width, contains search results */
-#left-panel {
-    width: 1fr;
-    height: 100%;
-    padding: 0;
-    background: $surface;
-    border: solid $secondary;
-}
-
-/* Right panel - 50% width, contains result details */
-#right-panel {
-    width: 1fr;
-    height: 100%;
-    padding: 1 2;
-    background: $surface;
-    border: solid $secondary;
-}
-
 /* Footer styling - uses built-in dock:bottom */
 Footer {
     dock: bottom;
-}
-
-
-/* Search results DataTable - fills remaining left panel space */
-#search-results {
-    height: 1fr;
-    scrollbar-size: 4 4;
-}
-
-/* Ensure table cells don't wrap and reduce padding */
-#search-results > .datatable--cell {
-    text-overflow: ellipsis;
-    overflow: hidden;
-    padding: 0 1;
-}
-
-/* Reduce header padding */
-#search-results > .datatable--header {
-    padding: 0 1;
-}
-
-/* DataTable cursor styling for card selection */
-#search-results > .datatable--cursor {
-    background: $accent;
-}
-
-/* Top panel content - horizontal layout for details and tag selector */
-#top-panel-content {
-    height: 100%;
-    width: 100%;
-}
-
-/* Result details widget - takes most of top panel width */
-#result-details {
-    width: 1fr;
-    height: 100%;
-    overflow-y: auto;
-    content-align: left middle;
-}
-
-/* Tag selector container - aligns selector to bottom-right */
-#tag-selector-container {
-    width: auto;
-    height: 100%;
-    align: right bottom;
-}
-
-/* Tag selector dropdown */
-#tag-selector {
-    width: 30;
-    height: 3;
-    margin: 0 1;
-}
-
-/* Right panel TabbedContent - fills entire right panel */
-#right-panel > TabbedContent {
-    height: 1fr;
-    width: 100%;
-}
-
-/* TabPane children need to fill available space */
-#right-panel > TabbedContent > TabPane {
-    height: 1fr;
-}
-
-/* Build info scroll container - handles scrolling */
-#build-info-scroll {
-    height: 1fr;
-    scrollbar-size: 4 4;
-}
-
-/* Build info widget - content with text wrapping */
-#build-info {
-    padding: 1;
-    text-wrap: wrap;
-}
-
-/* Filesystem placeholder */
-#filesystem-placeholder {
-    height: 1fr;
-    padding: 1;
-    text-align: center;
-    color: $text-muted;
 }

@@ -1,1 +1,21 @@
-/* TBD */
+/* Right Panel Styles - Tabbed content container */
+
+/* Right panel - 50% width, contains result details */
+#right-panel {
+    width: 1fr;
+    height: 100%;
+    padding: 1 2;
+    background: $surface;
+    border: solid $secondary;
+}
+
+/* Right panel TabbedContent - fills entire right panel */
+#right-panel > TabbedContent {
+    height: 1fr;
+    width: 100%;
+}
+
+/* TabPane children need to fill available space */
+#right-panel > TabbedContent > TabPane {
+    height: 1fr;
+}

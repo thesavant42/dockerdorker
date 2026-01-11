@@ -1,1 +1,37 @@
-/* TBD */
+/* Top Panel Styles - Result details and tag selector */
+
+/* Top panel - flows below header in vertical layout (not docked) */
+#top-panel {
+    height: 1fr;
+    padding: 1 2;
+    background: $surface;
+    border: solid $primary;
+}
+
+/* Top panel content - horizontal layout for details and tag selector */
+#top-panel-content {
+    height: 100%;
+    width: 100%;
+}
+
+/* Result details widget - takes most of top panel width */
+#result-details {
+    width: 1fr;
+    height: 100%;
+    overflow-y: auto;
+    content-align: left middle;
+}
+
+/* Tag selector container - aligns selector to bottom-right */
+#tag-selector-container {
+    width: auto;
+    height: 100%;
+    align: right bottom;
+}
+
+/* Tag selector dropdown */
+#tag-selector {
+    width: 30;
+    height: 3;
+    margin: 0 1;
+}
