@@ -8,6 +8,9 @@ A Textual app for exploring Docker Hub repositories.
 - Right Panel (result details)
 - Footer (docked bottom)
 """
+from dotenv import load_dotenv
+load_dotenv("proxy.env")  # Specify the filename explicitly
+import os
 
 from textual import work
 from textual.app import App, ComposeResult

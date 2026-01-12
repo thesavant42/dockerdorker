@@ -60,7 +60,7 @@ def _fetch_pull_token(namespace: str, repo: str) -> Optional[str]:
         f"?service=registry.docker.io&scope=repository:{namespace}/{repo}:pull"
     )
     try:
-        resp = requests.get(auth_url, timeout=10)
+        resp = requests.get(auth_url, timeout=10, verify=False)
         resp.raise_for_status()
         return resp.json().get("token")
     except requests.RequestException:

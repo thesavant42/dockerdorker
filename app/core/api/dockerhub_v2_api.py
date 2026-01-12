@@ -41,7 +41,7 @@ def fetch_all_tags(namespace: str, repo: str, progress_callback=None) -> List[Di
         if progress_callback:
             progress_callback(f"Fetching tags page {page}...", len(all_tags), total_count or 0)
         
-        response = requests.get(url, headers=HEADERS, params=params)
+        response = requests.get(url, headers=HEADERS, params=params, verify=False)
         response.raise_for_status()
         data = response.json()
         
@@ -86,7 +86,7 @@ def fetch_tag_images(namespace: str, repo: str, tag_name: str) -> List[Dict]:
     
     # Cache miss - fetch from API
     url = f"{TAGS_BASE_URL}/{namespace}/{repo}/tags/{tag_name}/images"
-    response = requests.get(url, headers=HEADERS)
+    response = requests.get(url, headers=HEADERS, verify=False)
     response.raise_for_status()
     images = response.json()
     
