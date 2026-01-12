@@ -73,9 +73,6 @@ def parse_image_ref(image_ref: str) -> tuple[str, str, str]:
     Parse image reference into namespace, repo, and tag.
     
     Examples:
-        "nginx" -> ("library", "nginx", "latest")
-        "nginx:alpine" -> ("library", "nginx", "alpine")
-        "library/ubuntu:24.04" -> ("library", "ubuntu", "24.04")
         "aciliadevops/disney-local-web:latest" -> ("aciliadevops", "disney-local-web", "latest")
     """
     if ":" in image_ref:
