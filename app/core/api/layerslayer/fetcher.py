@@ -17,7 +17,7 @@ from typing import Callable, Generator, Optional, TYPE_CHECKING
 import requests
 
 from app.core.api.layerslayer.parser import TarEntry, parse_tar_header
-
+from app.core.api.ddork_proxy import proxy_request
 if TYPE_CHECKING:
     from app.core.database import Database
 
@@ -47,7 +47,9 @@ class LayerPeekResult:
 
 
 # Persistent session for registry calls
-_session = requests.Session()
+# Updated to use app\core\api\ddork_proxy.py
+#_session = requests.Session()
+_session = proxy_request.Session()
 _session.headers.update({
     "Accept": "application/vnd.docker.distribution.manifest.v2+json"
 })
@@ -66,8 +68,9 @@ def _fetch_pull_token(namespace: str, repo: str) -> Optional[str]:
         f"https://auth.docker.io/token"
         f"?service=registry.docker.io&scope=repository:{namespace}/{repo}:pull"
     )
+    # uses http proxy module
     try:
-        resp = requests.get(auth_url)
+        resp = proxy_request.get(auth_url)
         resp.raise_for_status()
         return resp.json().get("token")
     except requests.RequestException:
@@ -123,7 +126,7 @@ def peek_layer_blob_partial(
         # Read the partial data
         compressed_data = resp.raw.read(initial_bytes)
         resp.close()
-        
+    # does this make http requests? if so needs to use app\core\api\ddork_proxy.py    
     except requests.RequestException as e:
         return LayerPeekResult(
             digest=digest,
