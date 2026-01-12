@@ -1,4 +1,9 @@
 import requests
+import logging
+
+# This helps prevent the log errors from causing exceptions
+logging.captureWarnings(True)
+
 
 proxy_state = "OFF"
 
