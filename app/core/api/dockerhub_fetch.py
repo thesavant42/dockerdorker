@@ -14,11 +14,6 @@ BASE_URL = "https://hub.docker.com/search.data"
 MAX_RETRIES = 3
 BACKOFF_DELAYS = [1, 2, 4, 8]  # progressive backoff
 
-proxies = {
-    'http': 'http://localhost:8080',
-    'https': 'http://localhost:8080',
-}
-
 def fetch_page(query: str, page: int = 1) -> requests.Response:
     """Fetch a single page of search results with retry backoff."""
     params = {
